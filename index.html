@@ -539,6 +539,28 @@ tr.after(nr);
 makeChart(cdiv, tk);
 });
 
+document.getElementById("alB").addEventListener("click",function(ev){
+var td=ev.target.closest(".tk-btn");
+if(!td)return;
+var tk=td.getAttribute("data-tk");
+if(!tk)return;
+var tr=td.closest("tr");
+var nx=tr.nextElementSibling;
+if(nx&&nx.className==="chart-row"){nx.remove();return}
+var nr=document.createElement("tr");nr.className="chart-row";
+var ntd=document.createElement("td");ntd.setAttribute("colspan","8");
+var wrap=document.createElement("div");wrap.className="chart-wrap";
+var hdr=document.createElement("div");hdr.className="chart-hdr";
+hdr.innerHTML='<span class="chart-tk">'+tk+' \u2014 Daily Chart with 8/21/50 EMA + SuperTrend + ADX</span>';
+var cb=document.createElement("button");cb.className="ccbtn";cb.textContent="Close";
+cb.onclick=function(){nr.remove()};
+hdr.appendChild(cb);
+var cdiv=document.createElement("div");cdiv.className="chart-main";
+makeChart(cdiv, tk);
+wrap.appendChild(hdr);wrap.appendChild(cdiv);ntd.appendChild(wrap);nr.appendChild(ntd);
+tr.after(nr);
+});
+
 function rTrades(){
 var go=ALL.filter(function(d){return d.signals>=3}).sort(function(a,b){return b.composite-a.composite});
 var grid=document.getElementById("tradesGrid");
