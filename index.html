@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global ETF Trend Scanner - Live</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAF8;--sf:#FFF;--sa:#F5F4F0;--bd:#E8E6E1;--bl:#F0EEE9;--t1:#1A1A18;--t2:#6B6963;--t3:#9E9A92;--ac:#2563EB;--gn:#16A34A;--gb:#F0FDF4;--gc:#BBF7D0;--rd:#DC2626;--rb:#FEF2F2;--rc:#FECACA;--am:#D97706;--nb:#F9FAFB;--r:10px;--rs:6px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--bg);color:var(--t1);line-height:1.5;-webkit-font-smoothing:antialiased}
+.hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:18px 32px;position:sticky;top:0;z-index:100}
+.hdr-in{max-width:1520px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.hdr-l{display:flex;align-items:center;gap:14px}
+.logo{width:34px;height:34px;background:var(--t1);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+.hdr-t{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.hdr-s{font-size:11px;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;font-weight:500}
+.hdr-r{display:flex;align-items:center;gap:10px}
+.badge{padding:4px 10px;background:var(--sa);border-radius:20px;font-size:11px;font-weight:500;color:var(--t2)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--gn);animation:pulse 2s ease infinite;display:inline-block;margin-right:4px;vertical-align:middle}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.rbtn{padding:6px 14px;font-size:12px;font-weight:600;border:1px solid var(--ac);border-radius:6px;background:var(--ac);color:#fff;cursor:pointer;font-family:inherit}
+.rbtn:hover{background:#1D4ED8}.rbtn:disabled{opacity:.5;cursor:not-allowed}
+.main{max-width:1520px;margin:0 auto;padding:22px 32px 60px}
+.ld-ov{position:fixed;inset:0;background:rgba(250,250,248,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity .3s}
+.ld-ov.hid{opacity:0;pointer-events:none}
+.ld-sp{width:44px;height:44px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-t{font-size:14px;font-weight:500;color:var(--t2);margin-bottom:6px}
+.ld-p{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)}
+.ld-bw{width:300px;height:4px;background:var(--bd);border-radius:2px;margin-top:10px;overflow:hidden}
+.ld-b{height:100%;background:var(--ac);border-radius:2px;transition:width .3s;width:0%}
+.sec{margin-bottom:26px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-t{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.sec-t .n{width:21px;height:21px;background:var(--t1);color:#fff;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.sec-m{font-size:11px;color:var(--t3)}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px}
+.st-c{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 18px;text-align:center}
+.st-v{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:1.1;margin-bottom:3px}
+.st-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+.fw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.fw-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:18px;position:relative;overflow:hidden}
+.fw-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.fw-card:nth-child(1)::before{background:var(--ac)}.fw-card:nth-child(2)::before{background:var(--gn)}.fw-card:nth-child(3)::before{background:var(--am)}.fw-card:nth-child(4)::before{background:#8B5CF6}
+.fw-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.fw-card:nth-child(1) .fw-lbl{color:var(--ac)}.fw-card:nth-child(2) .fw-lbl{color:var(--gn)}.fw-card:nth-child(3) .fw-lbl{color:var(--am)}.fw-card:nth-child(4) .fw-lbl{color:#8B5CF6}
+.fw-nm{font-size:14px;font-weight:600;margin-bottom:5px}
+.fw-d{font-size:11px;color:var(--t2);line-height:1.6}
+.fw-f{margin-top:10px;padding:7px 9px;background:var(--sa);border-radius:var(--rs);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t2);line-height:1.6}
+.use-box{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:24px;margin-top:14px}
+.use-box h4{font-size:14px;font-weight:600;margin-bottom:14px}
+.use-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.use-col h5{font-size:12px;font-weight:600;margin-bottom:8px}
+.use-col p,.use-col li{font-size:12px;color:var(--t2);line-height:1.7}
+.use-col ul{padding-left:16px;margin-top:4px}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;margin-right:3px}
+.tag-go{background:#065F46;color:#fff}.tag-lean{background:var(--gb);color:var(--gn);border:1px solid var(--gc)}.tag-watch{background:var(--nb);color:var(--t3);border:1px solid var(--bd)}.tag-avoid{background:var(--rb);color:var(--rd);border:1px solid var(--rc)}
+.flow-box{margin-top:12px;padding:14px;background:var(--sa);border-radius:var(--rs);font-size:12px;line-height:1.8;color:var(--t2)}
+.flow-box code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--sf);padding:1px 5px;border-radius:3px;border:1px solid var(--bd)}
+.flt{display:flex;align-items:center;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.flt-l{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-right:3px}
+.flt-b{padding:5px 12px;font-size:11px;font-weight:500;border:1px solid var(--bd);border-radius:18px;background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit}
+.flt-b:hover{border-color:var(--t3);color:var(--t1)}.flt-b.on{background:var(--t1);color:#fff;border-color:var(--t1)}
+.tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--bd);background:var(--sf)}
+.tb{width:100%;border-collapse:collapse;font-size:12px}
+.tb thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);background:var(--sa);border-bottom:1px solid var(--bd);white-space:nowrap}
+.tb tbody td{padding:9px 12px;border-bottom:1px solid var(--bl);white-space:nowrap}
+.tb tbody tr:hover{background:#FDFCFA}.tb tbody tr:last-child td{border-bottom:none}
+.tk{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;color:var(--ac)}
+.nm{color:var(--t2);font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.nc{font-family:'JetBrains Mono',monospace;font-size:11px;text-align:right}.nh{text-align:right}
+.ac-t{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;padding:2px 5px;border-radius:3px;background:var(--sa);color:var(--t3)}
+.sg{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.sg-su{background:#065F46;color:#fff}.sg-u{background:var(--gb);color:var(--gn);border:1px solid var(--gc)}.sg-n{background:var(--nb);color:var(--t3);border:1px solid var(--bd)}.sg-d{background:var(--rb);color:var(--rd);border:1px solid var(--rc)}.sg-sd{background:var(--rd);color:#fff}
+.sg-dot{width:5px;height:5px;border-radius:50%}.sg-u .sg-dot{background:var(--gn)}.sg-d .sg-dot{background:var(--rd)}
+.sb{width:70px;height:5px;background:var(--bd);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px}
+.sf{height:100%;border-radius:3px}.sf-g{background:var(--gn)}.sf-r{background:var(--rd)}.sf-a{background:var(--am)}
+.tq{display:flex;align-items:center;gap:2px}.tq-b{width:3px;height:12px;border-radius:2px;background:var(--bd)}.tq-g{background:var(--gn)}.tq-a{background:var(--am)}.tq-r{background:var(--rd)}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cc{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:18px}
+.cc h4{font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.hl{background:var(--gb)!important}
+.sort{cursor:pointer;user-select:none}.sort:hover{color:var(--t1)}
+.err{background:var(--rb);border:1px solid var(--rc);border-radius:var(--r);padding:14px 18px;margin-bottom:14px;font-size:12px;color:var(--rd)}
+.notes{margin-top:28px;padding:18px 22px;background:var(--sa);border-radius:var(--r);border:1px solid var(--bl)}
+.notes h4{font-size:13px;font-weight:600;margin-bottom:8px}
+.notes li{font-size:11px;color:var(--t2);line-height:1.7}
+.notes ul{padding-left:16px;margin-top:4px}
+@media(max-width:1024px){.fw-grid,.cg{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(3,1fr)}.use-grid{grid-template-columns:1fr}}
+@media(max-width:768px){.fw-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.main{padding:14px}}
+.chart-row td{padding:0!important}
+.chart-wrap{height:640px;padding:10px;background:var(--sa)}
+.chart-main{height:620px;border-radius:var(--rs);overflow:hidden;border:1px solid var(--bd)}
+.tk-btn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.tk-btn:hover{color:#1D4ED8}
+.ccbtn{float:right;background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:2px 10px;font-size:11px;cursor:pointer;font-family:inherit;margin:0 10px 6px 0}
+
+.tk-btn::after{content:" \25B6";font-size:7px;color:var(--ac);opacity:.4;vertical-align:middle;margin-left:3px}
+.tk-btn:hover::after{opacity:1}
+.tk-hint{font-size:10px;color:var(--t3);font-style:italic;margin-left:8px;font-weight:400}
+.guide-box{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:24px;margin-top:14px}
+.guide-box h4{font-size:14px;font-weight:600;margin-bottom:14px}
+.guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.guide-col h5{font-size:12px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.guide-col p,.guide-col li{font-size:12px;color:var(--t2);line-height:1.7}
+.guide-col ul{padding-left:16px;margin-top:4px}
+.guide-col ol{padding-left:16px;margin-top:4px}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--t1);color:#fff;font-size:10px;font-weight:700;flex-shrink:0}
+.step-box{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
+.step-box p{margin:0;font-size:12px;color:var(--t2);line-height:1.6}
+.step-box strong{color:var(--t1)}
+.entry-rules{margin-top:12px;padding:14px;background:var(--sa);border-radius:var(--rs);font-size:12px;line-height:1.8;color:var(--t2)}
+.entry-rules code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--sf);padding:1px 5px;border-radius:3px;border:1px solid var(--bd)}
+.warn-box{margin-top:10px;padding:10px 14px;background:var(--rb);border:1px solid var(--rc);border-radius:var(--rs);font-size:11px;color:var(--rd);line-height:1.6}
+@media(max-width:1024px){.guide-grid{grid-template-columns:1fr}}
+
+.trades-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.trade-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:140px 1fr auto;gap:16px;align-items:center}
+.trade-card:hover{border-color:var(--ac);cursor:pointer}
+.trade-left{display:flex;flex-direction:column;gap:4px}
+.trade-tk{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:var(--ac)}
+.trade-nm{font-size:11px;color:var(--t2)}
+.trade-cls{font-size:9px;font-weight:600;text-transform:uppercase;color:var(--t3)}
+.trade-checks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.trade-chk{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border-radius:var(--rs);background:var(--sa);font-size:10px;text-align:center}
+.trade-chk.pass{background:var(--gb);color:var(--gn)}
+.trade-chk.fail{background:var(--rb);color:var(--rd)}
+.trade-chk.na{background:var(--nb);color:var(--t3)}
+.trade-chk-icon{font-size:14px;font-weight:700}
+.trade-chk-lbl{font-size:9px;font-weight:500;line-height:1.2}
+.trade-action{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:80px}
+.trade-verdict{padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700}
+.tv-buy{background:#065F46;color:#fff}
+.tv-wait{background:var(--gb);color:var(--gn);border:1px solid var(--gc)}
+.tv-caution{background:var(--rb);color:var(--rd);border:1px solid var(--rc)}
+.trade-score{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3)}
+.trade-open{font-size:9px;color:var(--ac);text-decoration:underline dotted;cursor:pointer}
+.no-trades{padding:24px;text-align:center;color:var(--t3);font-size:13px}
+.legend-row{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.legend-dot{width:10px;height:10px;border-radius:3px}
+@media(max-width:768px){.trade-card{grid-template-columns:1fr}.trade-checks{grid-template-columns:repeat(3,1fr)}}
+
+.trade-chart-row{margin-top:0;margin-bottom:12px;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;background:var(--sa)}
+.trade-chart-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--sf);border-bottom:1px solid var(--bd)}
+.trade-chart-hdr span{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--ac)}
+.trade-chart-body{height:550px}
+.trade-chart-body iframe{width:100%;height:550px;border:none;display:block}
+.trade-exit{margin-top:6px;padding:10px 14px;background:var(--sa);border-radius:var(--rs);font-size:11px;line-height:1.7;color:var(--t2)}
+.trade-exit strong{color:var(--t1);font-size:11px}
+.trade-exit .exit-red{color:var(--rd);font-weight:600}
+.trade-exit .exit-grn{color:var(--gn);font-weight:600}
+
+.exit-card{background:var(--sf);border:1px solid var(--rc);border-left:4px solid var(--rd);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:140px 1fr auto;gap:16px;align-items:center;margin-bottom:10px}
+.exit-card:hover{border-color:var(--rd);cursor:pointer}
+.exit-tk{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:var(--rd)}
+.exit-signals{display:flex;flex-direction:column;gap:4px}
+.exit-sig{font-size:11px;color:var(--rd);line-height:1.5;display:flex;align-items:flex-start;gap:5px}
+.exit-sig-icon{flex-shrink:0;font-size:12px}
+.exit-action{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:90px}
+.exit-verdict{padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700}
+.ev-exit{background:var(--rd);color:#fff}
+.ev-reduce{background:var(--rb);color:var(--rd);border:1px solid var(--rc)}
+.ev-tighten{background:var(--ab);color:var(--am);border:1px solid #FCD34D}
+.exit-prev{font-size:9px;color:var(--t3);text-align:center;margin-top:2px}
+.exit-meta{font-size:10px;color:var(--t3);margin-top:4px}
+.no-exits{padding:24px;text-align:center;color:var(--gn);font-size:13px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="ld-ov" id="ldOv"><div class="ld-sp"></div><div class="ld-t">Fetching live data from Yahoo Finance...</div><div class="ld-p" id="ldP">Initializing...</div><div class="ld-bw"><div class="ld-b" id="ldB"></div></div></div>
+<div class="hdr"><div class="hdr-in">
+<div class="hdr-l"><div class="logo">TS</div><div><div class="hdr-t">Global ETF Trend Scanner</div><div class="hdr-s">Live Yahoo Finance</div></div></div>
+<div class="hdr-r"><span class="badge"><span class="live-dot"></span>Live</span><span class="badge" style="font-family:JetBrains Mono,monospace;font-size:10px" id="ts">Loading...</span><button class="rbtn" id="rfBtn" onclick="fetchAllData()">Refresh</button></div>
+</div></div>
+<div class="main">
+<div id="errC"></div>
+<div class="stats" id="sumStats"></div>
+<div class="sec">
+<div class="sec-h"><div class="sec-t"><span class="n">1</span> Actionable Trades &mdash; Entry / Exit Signals</div><div class="sec-m">GO and LEAN setups only &middot; Daily chart entry checklist</div></div>
+<div class="legend-row">
+<div class="legend-item"><div class="legend-dot" style="background:#065F46"></div> Entry zone &mdash; all daily checks pass</div>
+<div class="legend-item"><div class="legend-dot" style="background:var(--gb);border:1px solid var(--gc)"></div> Wait &mdash; trend confirmed, timing not ideal</div>
+<div class="legend-item"><div class="legend-dot" style="background:var(--rb);border:1px solid var(--rc)"></div> Caution &mdash; daily structure weakening</div>
+</div>
+<div class="trades-grid" id="tradesGrid"></div>
+</div>
+
+
+<div class="sec">
+<div class="sec-h"><div class="sec-t"><span style="width:21px;height:21px;background:var(--rd);color:#fff;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">!</span> Positions to Exit / Reduce</div><div class="sec-m">ETFs with deteriorating trends &mdash; previously trending, now breaking down</div></div>
+<div id="exitGrid"></div>
+</div>
+
+<div class="sec">
+<div class="sec-h"><div class="sec-t"><span class="n">2</span> Methodology</div></div>
+<div class="fw-grid">
+<div class="fw-card"><div class="fw-lbl">Layer A - Direction</div><div class="fw-nm">Faber 10M SMA</div><div class="fw-d">Price vs 10-month SMA. Binary filter from Faber (2006).</div><div class="fw-f">Price &gt; SMA(10M) = LONG<br>Price &lt; SMA(10M) = CASH</div></div>
+<div class="fw-card"><div class="fw-lbl">Layer B - Strength</div><div class="fw-nm">ADX Trend Strength</div><div class="fw-d">Wilder 14-period ADX. Filters ranging markets.</div><div class="fw-f">ADX &gt; 25 = Trending<br>ADX &gt; 40 = Strong<br>+DI vs -DI = Direction</div></div>
+<div class="fw-card"><div class="fw-lbl">Layer C - Magnitude</div><div class="fw-nm">12-Minus-1 Momentum</div><div class="fw-d">Skip 1M (reversal). Jegadeesh &amp; Titman (1993).</div><div class="fw-f">Score = avg(2M, 3M, 6M, 12M)<br>Skip 1M reversal<br>Top 33% = Strong</div></div>
+<div class="fw-card"><div class="fw-lbl">Layer D - Quality</div><div class="fw-nm">Trend Smoothness R2</div><div class="fw-d">R2 of log-price regression. Only trade clean trends.</div><div class="fw-f">R2 of ln(Price) ~ Time<br>R2 &gt; 0.7 = Smooth<br>R2 &lt; 0.3 = Avoid</div></div>
+</div>
+<div class="use-box">
+<h4>How the 4 Layers Combine</h4>
+<div class="use-grid">
+<div class="use-col">
+<h5>Signal Alignment</h5>
+<p>5 binary tests. More passes = higher conviction:</p>
+<ul>
+<li><strong>1. SMA:</strong> Price above 10M SMA?</li>
+<li><strong>2. ADX&gt;25:</strong> Real trend?</li>
+<li><strong>3. +DI&gt;-DI:</strong> Bullish?</li>
+<li><strong>4. Mom Top 33%:</strong> 12-minus-1 strong?</li>
+<li><strong>5. R2&gt;0.6:</strong> Clean trend?</li>
+</ul>
+<div style="margin-top:12px">
+<span class="tag tag-go">GO 4-5/5</span> High conviction.<br>
+<span class="tag tag-lean">LEAN 3/5</span> Forming.<br>
+<span class="tag tag-watch">WATCH 2/5</span> Mixed.<br>
+<span class="tag tag-avoid">AVOID 0-1/5</span> No trend.
+</div>
+</div>
+<div class="use-col">
+<h5>Composite Score (0-100)</h5>
+<div class="flow-box">
+<strong>Score each layer 0-100:</strong><br>
+<code>A</code> SMA: 100 above, 0 below<br>
+<code>B</code> ADX: scaled 10-50 to 0-100<br>
+<code>C</code> Momentum: percentile rank<br>
+<code>D</code> R2 x 100<br><br>
+<code>Raw = 0.25xA + 0.25xB + 0.25xC + 0.25xD</code><br><br>
+<strong>Direction adjust:</strong><br>
++DI &gt; -DI = full score<br>
+-DI &gt; +DI = x0.3 (bearish penalty)
+</div>
+<h5 style="margin-top:10px">Why skip 1-month?</h5>
+<p>Jegadeesh &amp; Titman (1993): most recent month reverses. Academic standard 12-minus-1 excludes it.</p>
+</div>
+</div>
+</div>
+</div>
+
+<div class="guide-box">
+<h4>How to Use This for Trade Setups</h4>
+<div class="guide-grid">
+<div class="guide-col">
+<h5><span style="color:var(--gn)">&#9679;</span> Finding Setups (Screening Phase)</h5>
+<div class="step-box"><span class="step-num">1</span><p><strong>Filter for GO or LEAN verdicts</strong> in the Signal Alignment Matrix (Section 3). These are ETFs where 3+ of 5 independent signals agree &mdash; direction, strength, magnitude, and quality all confirm a trend.</p></div>
+<div class="step-box"><span class="step-num">2</span><p><strong>Prioritise high R&sup2; (&ge;0.7)</strong> &mdash; these are Dominic&rsquo;s &ldquo;clean trends.&rdquo; A high composite score with low R&sup2; means the trend exists but is choppy and harder to ride. Smooth trends are more forgiving on entry timing.</p></div>
+<div class="step-box"><span class="step-num">3</span><p><strong>Check ADX direction</strong> &mdash; you want <strong>+DI &gt; &minus;DI</strong> (bullish) AND <strong>ADX &ge; 25</strong> (trending). ADX rising above 25 is the ideal moment: the trend is just gaining conviction.</p></div>
+<div class="step-box"><span class="step-num">4</span><p><strong>Cross-reference across asset classes.</strong> If commodities, EM equities, and FX all show bullish signals, it&rsquo;s a macro theme. If only one ETF in a class is trending, it&rsquo;s idiosyncratic &mdash; size positions accordingly.</p></div>
+</div>
+<div class="guide-col">
+<h5><span style="color:var(--ac)">&#9679;</span> Entry &amp; Execution (Timing Phase)</h5>
+<p>Once the scanner identifies a GO/LEAN setup, <strong>click the ticker</strong> to open the daily chart. Then look for:</p>
+<div class="entry-rules">
+<strong>Entry checklist (daily chart):</strong><br>
+<code>1</code> Price above 50 EMA (confirms long-term uptrend)<br>
+<code>2</code> Price above 21 EMA (confirms medium-term direction)<br>
+<code>3</code> SuperTrend is green / bullish (confirms daily trend)<br>
+<code>4</code> Look for pullback to 8 EMA as entry zone<br>
+<code>5</code> ADX rising or &ge;25 on daily confirms strength<br><br>
+<strong>Ideal entry:</strong> Price pulls back to touch/near 10 EMA while SuperTrend remains green and price stays above 50 EMA. This is a &ldquo;buy the dip in an uptrend&rdquo; setup with trend confirmation.<br><br>
+<strong>Stop loss:</strong> Below the SuperTrend line or below the most recent swing low. The SuperTrend adapts to volatility (ATR-based), giving you a dynamic trailing stop.<br><br>
+<strong>Exit signals:</strong><br>
+&bull; SuperTrend flips red (daily) &mdash; tighten or exit<br>
+&bull; Price breaks below 21 EMA &mdash; reduce position<br>
+&bull; Monthly SMA signal flips to BELOW &mdash; full exit<br>
+&bull; ADX drops below 20 &mdash; trend is dying, take profits
+</div>
+<div class="warn-box"><strong>Key principle:</strong> The scanner tells you WHAT to trade (direction + quality). The daily chart tells you WHEN to enter. Never enter on the scanner alone &mdash; always confirm with the chart. Entry point discipline matters: deploy after flat/pullback periods, not after strong runs (Clare et al. 2016).</div>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="sec-h"><div class="sec-t"><span class="n">3</span> Trend Scanner<span class="tk-hint">Click any ticker for chart</span></div><div class="sec-m">Click headers to sort</div></div>
+<div class="flt"><span class="flt-l">Class:</span><button class="flt-b on" data-f="ALL">All</button><button class="flt-b" data-f="US Equity">US Eq</button><button class="flt-b" data-f="Intl Equity">Intl</button><button class="flt-b" data-f="EM Equity">EM</button><button class="flt-b" data-f="Fixed Income">FI</button><button class="flt-b" data-f="Commodity">Cmdty</button><button class="flt-b" data-f="Real Estate">RE</button><button class="flt-b" data-f="Currency">FX</button><button class="flt-b" data-f="Alternatives">Alts</button><button class="flt-b" data-f="Thematic">Thematic</button></div>
+<div class="flt"><span class="flt-l">Regime:</span><button class="flt-b rf on" data-r="ALL">All</button><button class="flt-b rf" data-r="STRONG_UP">Strong Up</button><button class="flt-b rf" data-r="UP">Up</button><button class="flt-b rf" data-r="NEUTRAL">Neutral</button><button class="flt-b rf" data-r="DOWN">Down</button><button class="flt-b rf" data-r="STRONG_DOWN">Str Down</button></div>
+<div class="tw"><table class="tb" id="scT"><thead><tr>
+<th class="sort" data-c="ticker">Ticker</th><th>Name</th><th>Class</th>
+<th class="sort nh" data-c="price">Price</th><th class="sort nh" data-c="composite">Comp</th><th>Regime</th>
+<th class="sort nh" data-c="aboveSMA">SMA</th><th class="sort nh" data-c="sma10m">10M</th>
+<th class="sort nh" data-c="adx">ADX</th><th>Dir</th>
+<th class="sort nh" data-c="mom2m">2M%</th><th class="sort nh" data-c="mom3m">3M%</th>
+<th class="sort nh" data-c="mom6m">6M%</th><th class="sort nh" data-c="mom12m">12M%</th>
+<th class="sort nh" data-c="momScore">12-1</th><th class="sort nh" data-c="r2">R2</th><th>Q</th>
+</tr></thead><tbody id="scB"></tbody></table></div>
+</div>
+<div class="sec">
+<div class="sec-h"><div class="sec-t"><span class="n">4</span> Signal Alignment</div></div>
+<div class="tw"><table class="tb"><thead><tr>
+<th>Ticker</th><th>Name</th><th class="nh">SMA</th><th class="nh">ADX</th><th class="nh">+DI</th><th class="nh">Mom</th><th class="nh">R2</th><th class="nh">Score</th><th>Verdict</th>
+</tr></thead><tbody id="alB"></tbody></table></div>
+</div>
+<div class="sec">
+<div class="sec-h"><div class="sec-t"><span class="n">5</span> Actionable Summary</div></div>
+<div class="cg">
+<div class="cc"><h4><span style="color:var(--gn)">*</span> Top Trending</h4><div id="topP"></div></div>
+<div class="cc"><h4><span style="color:var(--rd)">*</span> Avoid</h4><div id="avdL"></div></div>
+</div>
+</div>
+
+<div class="notes"><h4>Notes</h4><ul>
+<li><strong>Data:</strong> Live Yahoo Finance via CORS proxy (allorigins/corsproxy.io). No synthetic data.</li>
+<li><strong>Momentum 12-1:</strong> 2M/3M/6M/12M, excluding 1M per Jegadeesh &amp; Titman (1993).</li>
+<li><strong>ADX:</strong> Wilder 14-period daily HLC.</li>
+<li><strong>R2:</strong> OLS ln(close) vs time, 12M.</li>
+<li><strong>Composite:</strong> 25% per layer, direction-adjusted.</li>
+</ul></div>
+</div>
+<script>
+var UNI=[
+{t:"SPY",n:"S&P 500",c:"US Equity"},{t:"QQQ",n:"Nasdaq 100",c:"US Equity"},
+{t:"IWM",n:"Russell 2000",c:"US Equity"},{t:"DIA",n:"Dow Jones 30",c:"US Equity"},
+{t:"VTV",n:"US Value",c:"US Equity"},{t:"VUG",n:"US Growth",c:"US Equity"},
+{t:"MDY",n:"S&P MidCap 400",c:"US Equity"},
+{t:"EFA",n:"EAFE Developed",c:"Intl Equity"},{t:"VGK",n:"Europe",c:"Intl Equity"},
+{t:"EWJ",n:"Japan",c:"Intl Equity"},{t:"EWU",n:"United Kingdom",c:"Intl Equity"},
+{t:"EWG",n:"Germany",c:"Intl Equity"},{t:"EWA",n:"Australia",c:"Intl Equity"},
+{t:"EWC",n:"Canada",c:"Intl Equity"},
+{t:"EEM",n:"Emerging Markets",c:"EM Equity"},{t:"FXI",n:"China Large Cap",c:"EM Equity"},
+{t:"EWZ",n:"Brazil",c:"EM Equity"},{t:"INDA",n:"India",c:"EM Equity"},
+{t:"EWT",n:"Taiwan",c:"EM Equity"},{t:"EWY",n:"South Korea",c:"EM Equity"},
+{t:"THD",n:"Thailand",c:"EM Equity"},{t:"EWS",n:"Singapore",c:"EM Equity"},
+{t:"TLT",n:"US 20Y+ Treasury",c:"Fixed Income"},{t:"IEF",n:"US 7-10Y Treasury",c:"Fixed Income"},
+{t:"LQD",n:"IG Corp Bonds",c:"Fixed Income"},{t:"HYG",n:"High Yield",c:"Fixed Income"},
+{t:"EMB",n:"EM Bonds",c:"Fixed Income"},{t:"TIP",n:"TIPS",c:"Fixed Income"},
+{t:"BND",n:"US Agg Bond",c:"Fixed Income"},
+{t:"GLD",n:"Gold",c:"Commodity"},{t:"SLV",n:"Silver",c:"Commodity"},
+{t:"USO",n:"Crude Oil",c:"Commodity"},{t:"DBA",n:"Agriculture",c:"Commodity"},
+{t:"DBB",n:"Base Metals",c:"Commodity"},{t:"UNG",n:"Natural Gas",c:"Commodity"},
+{t:"PDBC",n:"Diversified Cmdty",c:"Commodity"},
+{t:"VNQ",n:"US REITs",c:"Real Estate"},{t:"VNQI",n:"Intl REITs",c:"Real Estate"},
+{t:"IYR",n:"US Real Estate",c:"Real Estate"},
+{t:"UUP",n:"US Dollar",c:"Currency"},{t:"FXE",n:"Euro",c:"Currency"},
+{t:"FXY",n:"Yen",c:"Currency"},{t:"FXB",n:"Pound",c:"Currency"},
+{t:"FXA",n:"AUD",c:"Currency"},
+{t:"KMLM",n:"Managed Futures",c:"Alternatives"},{t:"DBMF",n:"MF Replication",c:"Alternatives"},
+{t:"BTAL",n:"Anti-Beta",c:"Alternatives"},{t:"GCC",n:"Cmdty Basket",c:"Alternatives"},
+{t:"GMOM",n:"Cambria Mom",c:"Alternatives"},
+{t:"SHLD",n:"Defense Tech",c:"Thematic"},{t:"URA",n:"Uranium/Nuclear",c:"Thematic"},
+{t:"PAVE",n:"US Infrastructure",c:"Thematic"},{t:"SMH",n:"Semiconductors",c:"Thematic"},
+{t:"COPX",n:"Copper Miners",c:"Thematic"},{t:"BOTZ",n:"Robotics & AI",c:"Thematic"},
+{t:"HACK",n:"Cybersecurity",c:"Thematic"},{t:"BITQ",n:"Crypto Industry",c:"Thematic"}
+];
+var PROXIES=[
+"https://api.allorigins.win/raw?url=",
+"https://corsproxy.io/?url=",
+"https://api.codetabs.com/v1/proxy?quest="
+];
+var activeProxy=0;
+var YB="https://query1.finance.yahoo.com/v8/finance/chart/";
+async function yf(tk,rng,intv){
+var raw=YB+tk+"?range="+rng+"&interval="+intv+"&includePrePost=false";
+for(var p=0;p<PROXIES.length;p++){
+var pi=(activeProxy+p)%PROXIES.length;
+try{
+var url=PROXIES[pi]+encodeURIComponent(raw);
+var r=await fetch(url);
+if(!r.ok)continue;
+var j=await r.json();
+var res=j.chart&&j.chart.result&&j.chart.result[0];
+if(!res)continue;
+activeProxy=pi;
+return res;
+}catch(e){continue}
+}
+throw new Error("All proxies failed for "+tk);
+}
+async function yfRetry(tk,rng,intv,retries){
+retries=retries||2;
+for(var i=0;i<retries;i++){
+try{return await yf(tk,rng,intv)}
+catch(e){if(i<retries-1)await new Promise(function(r){setTimeout(r,800)});else throw e}
+}
+}
+function getMC(res){var ts=res.timestamp||[],cl=(res.indicators.quote[0].close)||[];var d=[];for(var i=0;i<ts.length;i++)if(cl[i]!=null)d.push(cl[i]);return d}
+function getDHLC(res){var q=res.indicators.quote[0];var h=q.high||[],l=q.low||[],c=q.close||[];var d=[];for(var i=0;i<h.length;i++)if(h[i]!=null&&l[i]!=null&&c[i]!=null)d.push({high:h[i],low:l[i],close:c[i]});return d}
+function smaC(a,p){if(a.length<p)return null;var s=0;for(var i=a.length-p;i<a.length;i++)s+=a[i];return s/p}
+function momR(mc){var n=mc.length,cur=mc[n-1];function g(m){var i=n-1-m;return i>=0?((cur-mc[i])/mc[i])*100:null}return{m1:g(1),m2:g(2),m3:g(3),m6:g(6),m12:g(12)}}
+function calcR2(mc){var n=Math.min(mc.length,13);if(n<6)return 0;var sl=mc.slice(-n),ln=[],xs=[];for(var i=0;i<n;i++){ln.push(Math.log(sl[i]));xs.push(i)}var mx=0,my=0;for(var i=0;i<n;i++){mx+=xs[i];my+=ln[i]}mx/=n;my/=n;var sxy=0,sxx=0,syy=0;for(var i=0;i<n;i++){var dx=xs[i]-mx,dy=ln[i]-my;sxy+=dx*dy;sxx+=dx*dx;syy+=dy*dy}if(sxx===0||syy===0)return 0;var r=sxy/Math.sqrt(sxx*syy);return Math.max(0,Math.min(1,r*r))}
+function calcADX(daily){var P=14;if(daily.length<P+1)return{adx:15,dp:15,dm:15};var tr=[],pd=[],md=[];for(var i=1;i<daily.length;i++){var c=daily[i],p=daily[i-1],hd=c.high-p.high,ld=p.low-c.low;pd.push(hd>ld&&hd>0?hd:0);md.push(ld>hd&&ld>0?ld:0);tr.push(Math.max(c.high-c.low,Math.abs(c.high-p.close),Math.abs(c.low-p.close)))}if(tr.length<P)return{adx:15,dp:15,dm:15};var sTR=0,sPD=0,sMD=0;for(var i=0;i<P;i++){sTR+=tr[i];sPD+=pd[i];sMD+=md[i]}var dxs=[];for(var i=P;i<tr.length;i++){sTR=sTR-(sTR/P)+tr[i];sPD=sPD-(sPD/P)+pd[i];sMD=sMD-(sMD/P)+md[i];var dip=sTR>0?(sPD/sTR)*100:0,dim=sTR>0?(sMD/sTR)*100:0,ds=dip+dim;dxs.push({dx:ds>0?(Math.abs(dip-dim)/ds)*100:0,dp:dip,dm:dim})}if(dxs.length<P){var l=dxs[dxs.length-1]||{dx:15,dp:15,dm:15};return{adx:+l.dx.toFixed(1),dp:+l.dp.toFixed(1),dm:+l.dm.toFixed(1)}}var adx=0;for(var i=0;i<P;i++)adx+=dxs[i].dx;adx/=P;for(var i=P;i<dxs.length;i++)adx=((adx*(P-1))+dxs[i].dx)/P;var last=dxs[dxs.length-1];return{adx:+adx.toFixed(1),dp:+last.dp.toFixed(1),dm:+last.dm.toFixed(1)}}
+
+var ALL=[],cF="ALL",cR="ALL",sC="composite",sD="desc",fails=[];
+async function fetchAllData(){var ov=document.getElementById("ldOv"),pr=document.getElementById("ldP"),bar=document.getElementById("ldB"),btn=document.getElementById("rfBtn");ov.classList.remove("hid");btn.disabled=true;fails=[];ALL=[];var tot=UNI.length,done=0,res=[],BS=6;for(var i=0;i<UNI.length;i+=BS){var batch=UNI.slice(i,i+BS);var proms=batch.map(function(etf){return(async function(e){try{var mr=await yfRetry(e.t,"2y","1mo",2);var mc=getMC(mr);var dr=await yfRetry(e.t,"3mo","1d",2);var daily=getDHLC(dr);var price=mc[mc.length-1];var s10=smaC(mc,10);var above=s10?price>s10:null;var moms=momR(mc);var r2=calcR2(mc);var ax=calcADX(daily);return{ticker:e.t,name:e.n,cls:e.c,price:+price.toFixed(2),sma10m:s10?+s10.toFixed(2):null,aboveSMA:above,m1:moms.m1!=null?+moms.m1.toFixed(2):null,m2:moms.m2!=null?+moms.m2.toFixed(2):null,m3:moms.m3!=null?+moms.m3.toFixed(2):null,m6:moms.m6!=null?+moms.m6.toFixed(2):null,m12:moms.m12!=null?+moms.m12.toFixed(2):null,adx:ax.adx,dp:ax.dp,dm:ax.dm,r2:+r2.toFixed(2),ok:true}}catch(err){fails.push(e.t);return{ticker:e.t,name:e.n,cls:e.c,ok:false}}finally{done++;pr.textContent=done+"/"+tot+" ("+e.t+")";bar.style.width=Math.round(done/tot*100)+"%"}})(etf)});var br=await Promise.all(proms);for(var k=0;k<br.length;k++)res.push(br[k]);if(i+BS<UNI.length)await new Promise(function(r){setTimeout(r,500)})}var valid=res.filter(function(d){return d.ok});valid.forEach(function(d){var vals=[d.m2,d.m3,d.m6,d.m12].filter(function(v){return v!=null});d.momScore=vals.length>0?+(vals.reduce(function(s,v){return s+v},0)/vals.length).toFixed(2):0});ALL=compComposite(valid);if(fails.length>0)document.getElementById("errC").innerHTML='<div class="err">Failed: '+fails.length+' - '+fails.join(", ")+'</div>';else document.getElementById("errC").innerHTML="";document.getElementById("ts").textContent=new Date().toLocaleString("en-SG",{dateStyle:"medium",timeStyle:"short"});renderAll();ov.classList.add("hid");btn.disabled=false}
+
+function compComposite(data){var ms=data.map(function(d){return d.momScore}).sort(function(a,b){return a-b});function pR(arr,v){var c=0;for(var i=0;i<arr.length;i++)if(arr[i]<=v)c++;return(c/arr.length)*100}data.forEach(function(d){var A=d.aboveSMA===true?100:d.aboveSMA===false?0:50;var B=Math.max(0,Math.min(100,((d.adx-10)/40)*100));var C=pR(ms,d.momScore);var D=d.r2*100;var dir=d.dp>d.dm?1.0:0.3;d.composite=+((A*.25+B*.25+C*.25+D*.25)*dir).toFixed(1);d.composite=Math.max(0,Math.min(100,d.composite));if(d.composite>=70&&d.aboveSMA&&d.adx>=25)d.regime="STRONG_UP";else if(d.composite>=50&&d.aboveSMA)d.regime="UP";else if(d.composite>=30)d.regime="NEUTRAL";else if(d.composite>=15)d.regime="DOWN";else d.regime="STRONG_DOWN";d.signals=0;if(d.aboveSMA)d.signals++;if(d.adx>=25)d.signals++;if(d.dp>d.dm)d.signals++;if(pR(ms,d.momScore)>=67)d.signals++;if(d.r2>=0.6)d.signals++});return data}
+
+function renderAll(){rSum();rScan();rAlign();rAction();rTrades();rExits()}
+function rSum(){var u=ALL.filter(function(d){return d.regime==="STRONG_UP"||d.regime==="UP"}).length;var dn=ALL.filter(function(d){return d.regime==="DOWN"||d.regime==="STRONG_DOWN"}).length;var ne=ALL.filter(function(d){return d.regime==="NEUTRAL"}).length;var avg=ALL.length>0?(ALL.reduce(function(s,d){return s+d.composite},0)/ALL.length).toFixed(1):"--";var sm=ALL.filter(function(d){return d.r2>=0.6}).length;document.getElementById("sumStats").innerHTML='<div class="st-c"><div class="st-v" style="color:var(--gn)">'+u+'</div><div class="st-l">Uptrending</div></div><div class="st-c"><div class="st-v" style="color:var(--t3)">'+ne+'</div><div class="st-l">Neutral</div></div><div class="st-c"><div class="st-v" style="color:var(--rd)">'+dn+'</div><div class="st-l">Down</div></div><div class="st-c"><div class="st-v">'+avg+'</div><div class="st-l">Avg Comp</div></div><div class="st-c"><div class="st-v" style="color:var(--ac)">'+sm+'</div><div class="st-l">Smooth</div></div><div class="st-c"><div class="st-v">'+ALL.length+'<span style="font-size:13px;color:var(--t3)">/'+UNI.length+'</span></div><div class="st-l">Loaded</div></div>'}
+
+function gFD(){var d=ALL.slice();if(cF!=="ALL")d=d.filter(function(x){return x.cls===cF});if(cR!=="ALL")d=d.filter(function(x){return x.regime===cR});d.sort(function(a,b){var va=a[sC],vb=b[sC];if(va==null)va=sD==="asc"?1e9:-1e9;if(vb==null)vb=sD==="asc"?1e9:-1e9;if(typeof va==="boolean"){va=va?1:0;vb=vb?1:0}if(typeof va==="string")return sD==="asc"?va.localeCompare(vb):vb.localeCompare(va);return sD==="asc"?va-vb:vb-va});return d}
+function fp(v){if(v==null)return'<span style="color:var(--t3)">-</span>';var c=v>=0?"var(--gn)":"var(--rd)";return'<span style="color:'+c+'">'+(v>0?"+":"")+v.toFixed(2)+"%</span>"}
+
+function rScan(){var data=gFD(),h="";for(var i=0;i<data.length;i++){var d=data[i];var cc=d.composite>=60?"var(--gn)":d.composite>=35?"var(--am)":"var(--rd)";var bc=d.composite>=60?"sf-g":d.composite>=35?"sf-a":"sf-r";var rgM={STRONG_UP:'<span class="sg sg-su">Strong Up</span>',UP:'<span class="sg sg-u"><span class="sg-dot"></span>Up</span>',NEUTRAL:'<span class="sg sg-n">Neutral</span>',DOWN:'<span class="sg sg-d"><span class="sg-dot"></span>Down</span>',STRONG_DOWN:'<span class="sg sg-sd">Str Down</span>'};var sm=d.aboveSMA===true?'<span class="sg sg-u" style="font-size:9px">ABOVE</span>':d.aboveSMA===false?'<span class="sg sg-d" style="font-size:9px">BELOW</span>':"-";var acl=d.adx>=40?"var(--gn)":d.adx>=25?"var(--am)":"var(--t3)";var di=d.dp>d.dm?'<span style="color:var(--gn);font-size:10px;font-weight:600">+DI</span>':'<span style="color:var(--rd);font-size:10px;font-weight:600">-DI</span>';var qb=Math.round(d.r2*5),qcl=d.r2>=.6?"tq-g":d.r2>=.3?"tq-a":"tq-r",qh="";for(var j=0;j<5;j++)qh+='<div class="tq-b '+(j<qb?qcl:"")+'"></div>';var msc=d.momScore>=0?"var(--gn)":"var(--rd)";var r2c=d.r2>=.6?"var(--gn)":d.r2>=.3?"var(--am)":"var(--rd)";h+='<tr class="'+(d.composite>=70?"hl":"")+'"><td class="tk tk-btn" data-tk="'+d.ticker+'">'+d.ticker+'</td><td class="nm">'+d.name+'</td><td><span class="ac-t">'+d.cls+'</span></td><td class="nc" style="font-weight:600">'+d.price.toFixed(2)+'</td><td class="nc"><span class="sb"><span class="sf '+bc+'" style="width:'+d.composite+'%"></span></span><span style="color:'+cc+';font-weight:600">'+d.composite+'</span></td><td>'+(rgM[d.regime]||"")+'</td><td class="nc">'+sm+'</td><td class="nc" style="color:var(--t2)">'+(d.sma10m!=null?d.sma10m:"-")+'</td><td class="nc" style="color:'+acl+';font-weight:600">'+d.adx+'</td><td>'+di+'</td><td class="nc">'+fp(d.m2)+'</td><td class="nc">'+fp(d.m3)+'</td><td class="nc">'+fp(d.m6)+'</td><td class="nc">'+fp(d.m12)+'</td><td class="nc" style="font-weight:600;color:'+msc+'">'+(d.momScore>0?"+":"")+d.momScore+'</td><td class="nc" style="font-weight:600;color:'+r2c+'">'+d.r2+'</td><td><div class="tq">'+qh+'</div></td></tr>'}document.getElementById("scB").innerHTML=h}
+
+function rAlign(){var data=ALL.slice().sort(function(a,b){return b.signals-a.signals});var ms=ALL.map(function(d){return d.momScore}).sort(function(a,b){return a-b});function pr(v){var c=0;for(var i=0;i<ms.length;i++)if(ms[i]<=v)c++;return(c/ms.length)*100}function ck(p){return p?'<span style="color:var(--gn);font-weight:700">Y</span>':'<span style="color:var(--rd)">N</span>'}var h="";for(var i=0;i<data.length;i++){var d=data[i];var ts=[d.aboveSMA===true,d.adx>=25,d.dp>d.dm,pr(d.momScore)>=67,d.r2>=.6];var vd=d.signals>=4?'<span class="sg sg-su">GO</span>':d.signals>=3?'<span class="sg sg-u">LEAN</span>':d.signals>=2?'<span class="sg sg-n">WATCH</span>':'<span class="sg sg-d">AVOID</span>';h+='<tr><td class="tk tk-btn" data-tk="'+d.ticker+'">'+d.ticker+'</td><td class="nm">'+d.name+'</td>';for(var j=0;j<ts.length;j++)h+='<td class="nc">'+ck(ts[j])+'</td>';h+='<td class="nc" style="font-weight:700">'+d.signals+'/5</td><td>'+vd+'</td></tr>'}document.getElementById("alB").innerHTML=h}
+
+function rAction(){var sorted=ALL.slice().sort(function(a,b){return b.composite-a.composite});var top=sorted.slice(0,10),bot=sorted.slice(-10).reverse();function mt(items,isTop){var cl=isTop?"var(--gn)":"var(--rd)";var rm={STRONG_UP:'<span class="sg sg-su" style="font-size:9px">SU</span>',UP:'<span class="sg sg-u" style="font-size:9px">Up</span>',NEUTRAL:'<span class="sg sg-n" style="font-size:9px">N</span>',DOWN:'<span class="sg sg-d" style="font-size:9px">Dn</span>',STRONG_DOWN:'<span class="sg sg-sd" style="font-size:9px">SD</span>'};var h='<table class="tb" style="font-size:11px"><thead><tr><th>#</th><th>Ticker</th><th>Name</th><th class="nh">Comp</th><th>Regime</th><th class="nh">R2</th><th class="nh">Sig</th></tr></thead><tbody>';for(var i=0;i<items.length;i++){var d=items[i],rank=isTop?i+1:ALL.length-i;h+='<tr><td style="font-weight:700;color:'+cl+'">'+rank+'</td><td class="tk tk-btn" data-tk="'+d.ticker+'">'+d.ticker+'</td><td class="nm">'+d.name+'</td><td class="nc" style="font-weight:700;color:'+cl+'">'+d.composite+'</td><td>'+(rm[d.regime]||"-")+'</td><td class="nc">'+d.r2+'</td><td class="nc" style="font-weight:600">'+d.signals+'/5</td></tr>'}return h+"</tbody></table>"}document.getElementById("topP").innerHTML=mt(top,true);document.getElementById("avdL").innerHTML=mt(bot,false)}
+
+document.querySelectorAll(".flt-b:not(.rf)").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll(".flt-b:not(.rf)").forEach(function(x){x.classList.remove("on")});b.classList.add("on");cF=b.getAttribute("data-f");rScan()})});
+document.querySelectorAll(".rf").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll(".rf").forEach(function(x){x.classList.remove("on")});b.classList.add("on");cR=b.getAttribute("data-r");rScan()})});
+document.querySelectorAll(".sort").forEach(function(th){th.addEventListener("click",function(){var c=th.getAttribute("data-c");if(sC===c)sD=sD==="desc"?"asc":"desc";else{sC=c;sD="desc"}rScan()})});
+
+function makeChart(container, tk) {
+var ifr = document.createElement("iframe");
+ifr.style.cssText = "width:100%;height:100%;border:none;display:block";
+var config = {
+  "autosize": true,
+  "symbol": tk,
+  "interval": "D",
+  "timezone": "Asia/Singapore",
+  "theme": "light",
+  "style": "1",
+  "locale": "en",
+  "allow_symbol_change": true,
+  "calendar": false,
+  "support_host": "https://www.tradingview.com",
+  "studies": [
+    {"id":"MAExp@tv-basicstudies","inputs":{"length":8}},
+    {"id":"MAExp@tv-basicstudies","inputs":{"length":21}},
+    {"id":"MAExp@tv-basicstudies","inputs":{"length":50}},
+    {"id":"STD;Super_Trend"},
+    {"id":"STD;Average_Directional_Index"}
+  ]
+};
+var html = '<!DOCTYPE html><html style="height:100%"><head></head><body style="margin:0;height:100%"><div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>' + JSON.stringify(config) + '<\/script></div></body></html>';
+ifr.srcdoc = html;
+container.appendChild(ifr);
+}
+
+document.getElementById("scB").addEventListener("click",function(ev){
+var td=ev.target.closest(".tk-btn");
+if(!td)return;
+var tk=td.getAttribute("data-tk");
+if(!tk)return;
+var tr=td.closest("tr");
+var nx=tr.nextElementSibling;
+if(nx&&nx.className==="chart-row"){nx.remove();return}
+var nr=document.createElement("tr");nr.className="chart-row";
+var ntd=document.createElement("td");ntd.setAttribute("colspan","17");
+var cid="tvc_"+tk+"_"+Date.now();
+var wrap=document.createElement("div");wrap.className="chart-wrap";
+var btn=document.createElement("button");btn.className="ccbtn";btn.textContent="Close Chart";
+btn.onclick=function(){nr.remove()};
+var cdiv=document.createElement("div");cdiv.className="chart-main";cdiv.id=cid;
+wrap.appendChild(btn);wrap.appendChild(cdiv);ntd.appendChild(wrap);nr.appendChild(ntd);
+tr.after(nr);
+makeChart(cdiv, tk);
+});
+
+function rTrades(){
+var go=ALL.filter(function(d){return d.signals>=3}).sort(function(a,b){return b.composite-a.composite});
+var grid=document.getElementById("tradesGrid");
+if(go.length===0){grid.innerHTML='<div class="no-trades">No GO or LEAN setups currently.</div>';return}
+
+// === STEP 1: Group by asset class and pick best per class ===
+var byClass={};
+for(var i=0;i<go.length;i++){
+var d=go[i];
+if(!byClass[d.cls])byClass[d.cls]=[];
+byClass[d.cls].push(d);
+}
+
+// === STEP 2: Tier classification ===
+var tier1=[],tier2=[],tier3=[];
+var classUsed={};
+
+for(var i=0;i<go.length;i++){
+var d=go[i];
+var aboveSMA=d.aboveSMA===true,strongTrend=d.adx>=25,bullishDir=d.dp>d.dm;
+var goodMom=d.momScore>0,smoothTrend=d.r2>=0.6;
+var passCount=0;
+if(aboveSMA)passCount++;if(strongTrend)passCount++;if(bullishDir)passCount++;
+if(goodMom)passCount++;if(smoothTrend)passCount++;
+
+var checks=[
+{pass:aboveSMA,lbl:"Above SMA",desc:"10M direction"},
+{pass:strongTrend,lbl:"ADX\u226525",desc:"Trend strength"},
+{pass:bullishDir,lbl:"+DI>\u2212DI",desc:"Bullish"},
+{pass:goodMom,lbl:"Mom>0",desc:"Momentum"},
+{pass:smoothTrend,lbl:"R\u00B2\u22650.6",desc:"Clean"}
+];
+
+var isBestInClass=byClass[d.cls]&&byClass[d.cls][0]&&byClass[d.cls][0].ticker===d.ticker;
+var classAlreadyUsed=classUsed[d.cls]||0;
+
+var obj={d:d,checks:checks,passCount:passCount,isBestInClass:isBestInClass};
+
+if(passCount>=4&&isBestInClass){
+tier1.push(obj);
+classUsed[d.cls]=(classUsed[d.cls]||0)+1;
+}else if(passCount>=4||(passCount>=3&&isBestInClass)){
+tier2.push(obj);
+}else{
+tier3.push(obj);
+}
+}
+
+// === STEP 3: Build HTML ===
+var h="";
+
+// Tier 1: Top Picks
+if(tier1.length>0){
+h+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:#065F46;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700">TIER 1</span><span style="font-size:13px;font-weight:600">Top Picks \u2014 Best-in-class, highest conviction</span><span style="font-size:11px;color:var(--t3)">'+tier1.length+' setups</span></div>';
+for(var i=0;i<tier1.length;i++){
+h+=buildTradeCard(tier1[i],"tier1");
+}
+h+='</div>';
+}
+
+// Tier 2: Secondary
+if(tier2.length>0){
+h+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--ac);color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700">TIER 2</span><span style="font-size:13px;font-weight:600">Also Strong \u2014 Valid setups, class overlap or minor flag</span><span style="font-size:11px;color:var(--t3)">'+tier2.length+' setups</span></div>';
+for(var i=0;i<tier2.length;i++){
+h+=buildTradeCard(tier2[i],"tier2");
+}
+h+='</div>';
+}
+
+// Tier 3: Watchlist
+if(tier3.length>0){
+h+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--t3);color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700">WATCHLIST</span><span style="font-size:13px;font-weight:600">Forming \u2014 3/5 signals, not yet actionable</span><span style="font-size:11px;color:var(--t3)">'+tier3.length+' setups</span></div>';
+h+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+for(var i=0;i<tier3.length;i++){
+var d=tier3[i].d;
+h+='<div style="padding:8px 14px;background:var(--sa);border:1px solid var(--bd);border-radius:var(--rs);font-size:11px;cursor:pointer" onclick="toggleTradeChart(this,\''+d.ticker+'\')">';
+h+='<span class="tk" style="font-weight:700;color:var(--ac)">'+d.ticker+'</span> ';
+h+='<span style="color:var(--t2)">'+d.name+'</span> ';
+h+='<span style="color:var(--t3)">'+d.cls+' \u00B7 '+tier3[i].passCount+'/5 \u00B7 Comp '+d.composite+'</span>';
+h+='</div>';
+}
+h+='</div></div>';
+}
+
+grid.innerHTML=h;
+}
+
+function buildTradeCard(obj,tier){
+var d=obj.d,checks=obj.checks,passCount=obj.passCount;
+var aboveSMA=checks[0].pass,strongTrend=checks[1].pass,bullishDir=checks[2].pass;
+var goodMom=checks[3].pass,smoothTrend=checks[4].pass;
+
+var verdict,vclass,action="",actionDetail="";
+if(passCount>=5){
+verdict="ENTRY ZONE";vclass="tv-buy";
+action="All 5 signals aligned. Highest conviction.";
+actionDetail="<strong>How to enter:</strong> Open chart. Look for pullback to 8 EMA with SuperTrend green. Stop below SuperTrend line. Size: risk 1\u20132% of capital per trade.";
+}else if(passCount>=4){
+var missing=[];
+if(!aboveSMA)missing.push("SMA");if(!strongTrend)missing.push("ADX "+d.adx);
+if(!bullishDir)missing.push("DI direction");if(!goodMom)missing.push("momentum "+d.momScore);
+if(!smoothTrend)missing.push("R\u00B2 "+d.r2);
+verdict="NEAR ENTRY";vclass="tv-buy";
+action="4/5 aligned. Flag: "+missing.join(", ")+".";
+actionDetail="<strong>How to enter:</strong> Same setup \u2014 pullback to 8 EMA, SuperTrend green. Use 75% position size. Scale to full when missing signal flips.";
+}else{
+verdict="WATCHLIST";vclass="tv-wait";
+var failing=[];
+if(!aboveSMA)failing.push("below SMA");if(!strongTrend)failing.push("ADX "+d.adx);
+if(!bullishDir)failing.push("bearish DI");if(!goodMom)failing.push("mom "+d.momScore);
+if(!smoothTrend)failing.push("R\u00B2 "+d.r2);
+action="3/5. Needs: "+failing.join(", ")+".";
+actionDetail="<strong>Wait.</strong> Do not enter. Re-check weekly for signal improvement.";
+}
+
+// Exit signals
+var exitSignals=[];
+if(!aboveSMA)exitSignals.push("Below 10M SMA \u2014 trend broken");
+if(d.adx<20)exitSignals.push("ADX "+d.adx+" \u2014 trend dying");
+if(!bullishDir&&d.adx>=25)exitSignals.push("Strong bearish: \u2212DI>+DI, ADX "+d.adx);
+if(d.momScore<-5)exitSignals.push("Deep negative momentum: "+d.momScore);
+var exitHtml="";
+if(exitSignals.length>0){
+exitHtml='<div class="trade-exit"><strong class="exit-red">Exit signals:</strong> '+exitSignals.join(" \u00B7 ")+'</div>';
+}else{
+exitHtml='<div class="trade-exit"><strong class="exit-grn">\u2713 No exit triggers.</strong> Hold with SuperTrend trailing stop. Tighten below 21 EMA.</div>';
+}
+
+var checksHtml="";
+for(var j=0;j<checks.length;j++){
+var ck=checks[j];
+checksHtml+='<div class="trade-chk '+(ck.pass?"pass":"fail")+'"><span class="trade-chk-icon">'+(ck.pass?"\u2713":"\u2717")+'</span><span class="trade-chk-lbl">'+ck.lbl+'</span></div>';
+}
+
+var borderColor=tier==="tier1"?"#065F46":"var(--ac)";
+var h='<div class="trade-card" style="border-left:4px solid '+borderColor+'" onclick="toggleTradeChart(this,\''+d.ticker+'\')">';
+h+='<div class="trade-left"><span class="trade-tk">'+d.ticker+' \u25B6</span><span class="trade-nm">'+d.name+'</span><span class="trade-cls">'+d.cls+' \u00B7 Comp '+d.composite+' \u00B7 '+passCount+'/5</span></div>';
+h+='<div style="flex:1"><div class="trade-checks">'+checksHtml+'</div>';
+h+='<div style="margin-top:8px;font-size:11px;color:var(--t2);line-height:1.6"><strong style="color:var(--t1)">'+verdict+':</strong> '+action+'</div>';
+h+='<div style="margin-top:4px;font-size:11px;color:var(--t2);line-height:1.6">'+actionDetail+'</div>';
+h+=exitHtml+'</div>';
+h+='<div class="trade-action"><span class="trade-verdict '+vclass+'">'+verdict+'</span><span class="trade-open">Chart \u25B6</span></div>';
+h+='</div>';
+return h;
+}
+
+function toggleTradeChart(card,tk){
+var existing=card.nextElementSibling;
+if(existing&&existing.className==="trade-chart-row"){existing.remove();return}
+var old=document.querySelectorAll(".trade-chart-row");
+for(var i=0;i<old.length;i++)old[i].remove();
+var row=document.createElement("div");row.className="trade-chart-row";
+var hdr=document.createElement("div");hdr.className="trade-chart-hdr";
+var closeBtn=document.createElement("button");closeBtn.className="ccbtn";closeBtn.textContent="Close";
+closeBtn.onclick=function(){row.remove()};
+hdr.innerHTML="<span>"+tk+" — Daily Chart with 8/21/50 EMA + SuperTrend + ADX</span>";
+hdr.appendChild(closeBtn);
+var body=document.createElement("div");body.className="trade-chart-body";
+makeChart(body, tk);
+row.appendChild(hdr);row.appendChild(body);
+card.after(row);
+}
+
+function rExits(){
+var grid=document.getElementById("exitGrid");
+if(!grid)return;
+var exits=[];
+var ms=ALL.map(function(d){return d.momScore}).sort(function(a,b){return a-b});
+function pR(arr,v){var ct=0;for(var i=0;i<arr.length;i++)if(arr[i]<=v)ct++;return(ct/arr.length)*100}
+
+for(var i=0;i<ALL.length;i++){
+var d=ALL[i];
+// Only show ETFs that have SOME bullish history but are now deteriorating
+// Criteria: signals <= 2 (WATCH or AVOID) BUT have at least one positive trait
+// OR: were recently trending (above SMA or positive 12M return) but daily structure breaking
+var hasHistory=d.aboveSMA===true||d.m12>0;
+var breaking=d.signals<=2;
+if(!hasHistory||!breaking)continue;
+
+var sigs=[];
+var severity=0;
+
+if(d.aboveSMA===false){sigs.push({text:"Price below 10M SMA \u2014 long-term trend broken. EXIT fully.",sev:3});severity+=3}
+if(d.dp<=d.dm&&d.adx>=25){sigs.push({text:"Strong bearish trend: \u2212DI>+DI with ADX "+d.adx+". EXIT or hedge.",sev:3});severity+=3}
+if(d.adx<20){sigs.push({text:"ADX at "+d.adx+" \u2014 trend died. Take profits, no edge in holding.",sev:2});severity+=2}
+if(d.dp<=d.dm&&d.adx<25){sigs.push({text:"Bearish pressure (\u2212DI>+DI) but ADX weak \u2014 REDUCE, watch for breakdown.",sev:1});severity+=1}
+if(d.momScore<-5){sigs.push({text:"Momentum score "+d.momScore+" \u2014 deeply negative. Relative weakness vs universe.",sev:2});severity+=2}
+if(d.r2<0.3){sigs.push({text:"R\u00B2 at "+d.r2+" \u2014 extremely choppy. Not a trend-following candidate.",sev:1});severity+=1}
+if(d.m12<-10){sigs.push({text:"12M return "+d.m12.toFixed(1)+"% \u2014 sustained downtrend.",sev:2});severity+=2}
+
+if(sigs.length===0)continue;
+exits.push({d:d,sigs:sigs,severity:severity});
+}
+
+exits.sort(function(a,b){return b.severity-a.severity});
+
+if(exits.length===0){
+grid.innerHTML='<div class="no-exits">\u2713 No exit signals. All previously trending ETFs are holding their trends.</div>';
+return;
+}
+
+var h="";
+for(var i=0;i<exits.length;i++){
+var ex=exits[i],d=ex.d;
+var vclass,vlabel;
+if(ex.severity>=5){vlabel="EXIT";vclass="ev-exit"}
+else if(ex.severity>=3){vlabel="REDUCE";vclass="ev-reduce"}
+else{vlabel="TIGHTEN";vclass="ev-tighten"}
+
+var sigsHtml="";
+for(var j=0;j<ex.sigs.length;j++){
+sigsHtml+='<div class="exit-sig"><span class="exit-sig-icon">\u26A0</span><span>'+ex.sigs[j].text+'</span></div>';
+}
+
+var rgM={STRONG_UP:'Strong Up',UP:'Up',NEUTRAL:'Neutral',DOWN:'Down',STRONG_DOWN:'Str Down'};
+
+h+='<div class="exit-card" onclick="toggleTradeChart(this,\''+d.ticker+'\')">';
+h+='<div class="trade-left"><span class="exit-tk">'+d.ticker+'</span><span class="trade-nm">'+d.name+'</span><span class="trade-cls">'+d.cls+'</span><span class="exit-meta">Comp '+d.composite+' \u00B7 '+d.signals+'/5 \u00B7 '+(rgM[d.regime]||"")+'</span></div>';
+h+='<div class="exit-signals">'+sigsHtml+'</div>';
+h+='<div class="exit-action"><span class="exit-verdict '+vclass+'">'+vlabel+'</span><span class="trade-open">Click for chart</span></div>';
+h+='</div>';
+}
+grid.innerHTML=h;
+}
+
+fetchAllData();
+</script>
+</body></html>
