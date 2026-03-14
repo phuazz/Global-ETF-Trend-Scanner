@@ -350,47 +350,34 @@ var PROXIES=[
 "https://corsproxy.io/?url=",
 "https://api.codetabs.com/v1/proxy?quest="
 ];
-var activeProxy=0;
+var proxyRR=0; // round-robin counter — spreads load across all proxies
 var YB="https://query1.finance.yahoo.com/v8/finance/chart/";
 async function yf(tk,rng,intv){
 var raw=YB+tk+"?range="+rng+"&interval="+intv+"&includePrePost=false";
-var pi=activeProxy;
+var pi=proxyRR%PROXIES.length;
+proxyRR++;
+// Try each proxy in round-robin order starting from assigned slot
+for(var attempt=0;attempt<PROXIES.length;attempt++){
+var idx=(pi+attempt)%PROXIES.length;
 try{
-var url=PROXIES[pi]+encodeURIComponent(raw);
+var url=PROXIES[idx]+encodeURIComponent(raw);
 var ctrl=new AbortController();
-var tid=setTimeout(function(){ctrl.abort()},8000);
+var tid=setTimeout(function(){ctrl.abort()},10000);
 var r=await fetch(url,{signal:ctrl.signal});
 clearTimeout(tid);
-if(!r.ok)throw new Error("HTTP "+r.status);
+if(!r.ok){if(r.status===429){await new Promise(function(r){setTimeout(r,1500)});continue}throw new Error("HTTP "+r.status)}
 var j=await r.json();
 var res=j.chart&&j.chart.result&&j.chart.result[0];
 if(!res)throw new Error("No data");
 return res;
-}catch(e){
-for(var p=1;p<PROXIES.length;p++){
-var npi=(pi+p)%PROXIES.length;
-try{
-var url2=PROXIES[npi]+encodeURIComponent(raw);
-var ctrl2=new AbortController();
-var tid2=setTimeout(function(){ctrl2.abort()},8000);
-var r2=await fetch(url2,{signal:ctrl2.signal});
-clearTimeout(tid2);
-if(!r2.ok)continue;
-var j2=await r2.json();
-var res2=j2.chart&&j2.chart.result&&j2.chart.result[0];
-if(!res2)continue;
-activeProxy=npi;
-return res2;
-}catch(e2){continue}
-}
-throw new Error("All proxies failed for "+tk);
+}catch(e){if(attempt<PROXIES.length-1){await new Promise(function(r){setTimeout(r,300)});continue}throw new Error("All proxies failed for "+tk)}
 }
 }
 async function yfRetry(tk,rng,intv,retries){
-retries=retries||2;
+retries=retries||3;
 for(var i=0;i<retries;i++){
 try{return await yf(tk,rng,intv)}
-catch(e){if(i<retries-1)await new Promise(function(r){setTimeout(r,800)});else throw e}
+catch(e){if(i<retries-1)await new Promise(function(r){setTimeout(r,1000+(i*1000))});else throw e}
 }
 }
 function getMC(res){var ts=res.timestamp||[],cl=(res.indicators.quote[0].close)||[];var d=[];for(var i=0;i<ts.length;i++)if(cl[i]!=null)d.push(cl[i]);return d}
@@ -420,17 +407,21 @@ renderAll();
 }
 }catch(e){}
 
-// Progressive load: process each ETF and render incrementally
+// Progressive load: process each ETF with staggered requests to avoid rate limits
 var tempAll=[];
-var BS=8;
+var BS=3; // small batches — each ETF makes 2 Yahoo calls, so 3×2=6 concurrent max
 for(var i=0;i<UNI.length;i+=BS){
 var batch=UNI.slice(i,i+BS);
-var proms=batch.map(function(etf){
-return(async function(e){
+var proms=batch.map(function(etf,idx){
+return(async function(e,stagger){
+// Stagger start within batch: 0ms, 200ms, 400ms
+if(stagger>0)await new Promise(function(r){setTimeout(r,stagger*200)});
 try{
-var mr=await yfRetry(e.t,"2y","1mo",2);
+var mr=await yfRetry(e.t,"2y","1mo",3);
 var mc=getMC(mr);
-var dr=await yfRetry(e.t,"3mo","1d",2);
+// Small delay between the two calls for the same ticker
+await new Promise(function(r){setTimeout(r,150)});
+var dr=await yfRetry(e.t,"3mo","1d",3);
 var daily=getDHLC(dr);
 var price=mc[mc.length-1];
 var s10=smaC(mc,10);
@@ -441,7 +432,7 @@ var ax=calcADX(daily);
 return{ticker:e.t,name:e.n,cls:e.c,price:+price.toFixed(2),sma10m:s10?+s10.toFixed(2):null,aboveSMA:above,m1:moms.m1!=null?+moms.m1.toFixed(2):null,m2:moms.m2!=null?+moms.m2.toFixed(2):null,m3:moms.m3!=null?+moms.m3.toFixed(2):null,m6:moms.m6!=null?+moms.m6.toFixed(2):null,m12:moms.m12!=null?+moms.m12.toFixed(2):null,adx:ax.adx,dp:ax.dp,dm:ax.dm,r2:+r2.toFixed(2),ok:true}
 }catch(err){fails.push(e.t);return{ticker:e.t,name:e.n,cls:e.c,ok:false}}
 finally{done++;pr.textContent=done+"/"+tot+" ("+e.t+")";bar.style.width=Math.round(done/tot*100)+"%"}
-})(etf)});
+})(etf,idx)});
 var br=await Promise.all(proms);
 for(var k=0;k<br.length;k++)if(br[k].ok)tempAll.push(br[k]);
 
@@ -454,7 +445,7 @@ d.momScore=vals.length>0?+(vals.reduce(function(s,v){return s+v},0)/vals.length)
 ALL=compComposite(valid);
 if(done>=16)renderAll();
 
-if(i+BS<UNI.length)await new Promise(function(r){setTimeout(r,200)});
+if(i+BS<UNI.length)await new Promise(function(r){setTimeout(r,600)});
 }
 
 // Final render with all data
