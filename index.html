@@ -196,11 +196,13 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .notes li{font-size:11px;color:var(--t2);line-height:1.7}
 .notes ul{padding-left:16px;margin-top:4px}
 /* Tabs */
-.tab-bar{display:flex;gap:0;margin-bottom:20px;background:var(--sa);border:1px solid var(--bd);border-radius:10px;padding:3px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-bar{display:flex;gap:0;margin-bottom:20px;background:var(--sa);border:1px solid var(--bd);border-radius:10px;padding:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
 .tab-btn{flex:1;padding:10px 14px;font-size:11px;font-weight:500;font-family:inherit;background:none;border:none;border-radius:8px;color:var(--t3);cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;min-width:0}
 .tab-btn:hover{color:var(--t1);background:rgba(0,0,0,.03)}
 .tab-btn.active{background:var(--sf);color:var(--t1);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .tab-icon{width:18px;height:18px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.tab-lbl{}
 .ti-trades{background:#065F46}.ti-exits{background:var(--rd)}.ti-scanner{background:var(--ac)}.ti-perf{background:var(--am)}.ti-signals{background:#8B5CF6}
 .tab-panel{display:none}.tab-panel.active{display:block}
 .tab-count{font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:6px;background:var(--bd);color:var(--t3)}
@@ -213,7 +215,7 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .data-age{font-size:10px;color:var(--t3);padding:2px 8px;background:var(--sa);border-radius:10px}
 .data-age.stale{color:var(--am);background:var(--ab)}
 @media(max-width:1024px){.fw-grid,.cg{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(3,1fr)}.use-grid,.guide-grid{grid-template-columns:1fr}.heatmap{grid-template-columns:repeat(3,1fr)}.checks-explainer{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:768px){.fw-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.main{padding:14px}.trade-card,.exit-card{grid-template-columns:1fr}.trade-checks{grid-template-columns:repeat(3,1fr)}.heatmap{grid-template-columns:1fr 1fr}.qs-row{flex-direction:column}.checks-explainer{grid-template-columns:repeat(2,1fr)}.tab-btn{padding:8px 14px;font-size:11px}.tab-bar{gap:2px;padding:3px;border-radius:10px}.chart-wrap{height:420px}.chart-main{height:400px}.trade-chart-body{height:380px}.trade-chart-body iframe{height:380px}.trade-chk-tip{width:180px;font-size:9px;left:0;transform:none}.pulse-verdict{flex-direction:column;gap:10px;text-align:center}.pv-right{text-align:center}}
+@media(max-width:768px){.fw-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.main{padding:14px}.trade-card,.exit-card{grid-template-columns:1fr}.trade-checks{grid-template-columns:repeat(3,1fr)}.heatmap{grid-template-columns:1fr 1fr}.qs-row{flex-direction:column}.checks-explainer{grid-template-columns:repeat(2,1fr)}.tab-btn{padding:8px 10px;font-size:10px;flex:none}.tab-lbl{display:none}.tab-bar{gap:2px;padding:3px;border-radius:10px}.chart-wrap{height:420px}.chart-main{height:400px}.trade-chart-body{height:380px}.trade-chart-body iframe{height:380px}.trade-chk-tip{width:180px;font-size:9px;left:0;transform:none}.pulse-verdict{flex-direction:column;gap:10px;text-align:center}.pv-right{text-align:center}}
 </style>
 </head>
 <body>
@@ -227,12 +229,12 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 <div id="content" style="display:none">
 <div class="sec">
 <div class="tab-bar" id="mainTabs">
-<button class="tab-btn active" data-tab="tab-pulse" onclick="switchTab(this)"><span class="tab-icon" style="background:var(--t1)">&#9673;</span> Market Pulse</button>
-<button class="tab-btn" data-tab="tab-trades" onclick="switchTab(this)"><span class="tab-icon ti-trades">&#9654;</span> Trade Setups</button>
-<button class="tab-btn" data-tab="tab-exits" onclick="switchTab(this)"><span class="tab-icon ti-exits">!</span> Exit Signals</button>
-<button class="tab-btn" data-tab="tab-scanner" onclick="switchTab(this)"><span class="tab-icon ti-scanner">&#9632;</span> Full Scanner</button>
-<button class="tab-btn" data-tab="tab-performance" onclick="switchTab(this)"><span class="tab-icon ti-perf">%</span> Performance</button>
-<button class="tab-btn" data-tab="tab-signals" onclick="switchTab(this)"><span class="tab-icon ti-signals">&#10003;</span> Signal Matrix</button>
+<button class="tab-btn active" data-tab="tab-pulse" onclick="switchTab(this)"><span class="tab-icon" style="background:var(--t1)">&#9673;</span><span class="tab-lbl"> Market Pulse</span></button>
+<button class="tab-btn" data-tab="tab-trades" onclick="switchTab(this)"><span class="tab-icon ti-trades">&#9654;</span><span class="tab-lbl"> Trade Setups</span></button>
+<button class="tab-btn" data-tab="tab-exits" onclick="switchTab(this)"><span class="tab-icon ti-exits">!</span><span class="tab-lbl"> Exit Signals</span></button>
+<button class="tab-btn" data-tab="tab-scanner" onclick="switchTab(this)"><span class="tab-icon ti-scanner">&#9632;</span><span class="tab-lbl"> Full Scanner</span></button>
+<button class="tab-btn" data-tab="tab-performance" onclick="switchTab(this)"><span class="tab-icon ti-perf">%</span><span class="tab-lbl"> Performance</span></button>
+<button class="tab-btn" data-tab="tab-signals" onclick="switchTab(this)"><span class="tab-icon ti-signals">&#10003;</span><span class="tab-lbl"> Signal Matrix</span></button>
 </div>
 
 <!-- TAB: Market Pulse -->
@@ -507,12 +509,12 @@ function updateTabCounts(){
 var buys=0,forms=0,exits=0;
 for(var i=0;i<ALL.length;i++){var d=ALL[i];var hadTrend=d.aboveSMA===true||d.m12>0;if(d.signals>=4)buys++;else if(d.signals===3)forms++;else if(hadTrend&&d.signals<=2)exits++}
 var tabs=document.querySelectorAll(".tab-btn");
-tabs[0].innerHTML='<span class="tab-icon" style="background:var(--t1)">&#9673;</span> Market Pulse';
-tabs[1].innerHTML='<span class="tab-icon ti-trades">&#9654;</span> Trade Setups <span class="tab-count">'+(buys+forms)+'</span>';
-tabs[2].innerHTML='<span class="tab-icon ti-exits">!</span> Exit Signals <span class="tab-count">'+exits+'</span>';
-tabs[3].innerHTML='<span class="tab-icon ti-scanner">&#9632;</span> Full Scanner <span class="tab-count">'+ALL.length+'</span>';
-tabs[4].innerHTML='<span class="tab-icon ti-perf">%</span> Performance <span class="tab-count">'+ALL.length+'</span>';
-tabs[5].innerHTML='<span class="tab-icon ti-signals">&#10003;</span> Signal Matrix <span class="tab-count">'+ALL.length+'</span>';
+tabs[0].innerHTML='<span class="tab-icon" style="background:var(--t1)">&#9673;</span><span class="tab-lbl"> Market Pulse</span>';
+tabs[1].innerHTML='<span class="tab-icon ti-trades">&#9654;</span><span class="tab-lbl"> Trade Setups</span> <span class="tab-count">'+(buys+forms)+'</span>';
+tabs[2].innerHTML='<span class="tab-icon ti-exits">!</span><span class="tab-lbl"> Exit Signals</span> <span class="tab-count">'+exits+'</span>';
+tabs[3].innerHTML='<span class="tab-icon ti-scanner">&#9632;</span><span class="tab-lbl"> Full Scanner</span> <span class="tab-count">'+ALL.length+'</span>';
+tabs[4].innerHTML='<span class="tab-icon ti-perf">%</span><span class="tab-lbl"> Performance</span> <span class="tab-count">'+ALL.length+'</span>';
+tabs[5].innerHTML='<span class="tab-icon ti-signals">&#10003;</span><span class="tab-lbl"> Signal Matrix</span> <span class="tab-count">'+ALL.length+'</span>';
 }
 
 function rPulse(){
