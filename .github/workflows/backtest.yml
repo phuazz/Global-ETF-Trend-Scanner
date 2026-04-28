@@ -1,0 +1,41 @@
+name: Weekly Backtest Refresh
+
+on:
+  schedule:
+    # Run at 08:00 UTC every Monday (after weekend, before Asia open)
+    - cron: '0 8 * * 1'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch full price history (max-age 0 forces fresh)
+        run: node fetch_history.js --max-age-hours=0
+
+      - name: Run backtest with production-default flags
+        run: node backtest.js --startMonth=2005-01 --regimeMode=graduated --regimeScale=0.05 --weighting=equal --equityOnly
+
+      - name: Commit backtest_results.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backtest_results.json
+          # Only commit if results actually changed
+          git diff --staged --quiet || git commit -m "Weekly backtest refresh $(date -u +%Y-%m-%d)"
+          git push
+
+      # The history/ folder is large and regenerable — never commit it.
+      # Caching it across runs would speed things up but isn't worth the
+      # cache-management overhead for a once-a-week job.
