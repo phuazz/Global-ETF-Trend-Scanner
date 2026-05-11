@@ -454,6 +454,119 @@ function runMonthly(timeline, decide, opts = {}) {
 }
 
 // ============================================================================
+// 4b. Daily-resolution P&L reconstruction (additive — for attribution layer)
+//
+// The strategy itself is monthly: weights are set at month-end t and held
+// through month t+1. For the benchmark-relative regression in attribution.py
+// we need a daily strategy return series, so we replay the same weights at
+// daily granularity using the daily adjusted-close prices already loaded in
+// `timeline.daily`.
+//
+// This does NOT change strategy logic — the monthly NAV path and every
+// existing stat stay exactly the same. It just exposes the same return at
+// finer granularity:
+//   - Day 1 of holding month t+1: realize the turnover cost (one-off).
+//   - Day 2..end of t+1:           portfolio return = SUM_i w_i * (px_i[d] / px_i[d-1] - 1),
+//                                  plus cash * rf_daily (or rf+borrow if levered).
+//
+// Returns: [{ date: 'YYYY-MM-DD', ret: number }, ...] sorted by date.
+// ============================================================================
+function buildDailyReturns(timeline, wHistory, opts) {
+  opts = opts || {};
+  const months = timeline.months;
+  const daily = timeline.daily;
+  const costBps = opts.costBps != null ? opts.costBps : 5;
+  const costByClass = opts.costByClass || null;
+  const classBy = opts.classByTicker || {};
+  const rfTicker = opts.rfTicker || 'SHY';
+  const borrowBps = opts.borrowBps != null ? opts.borrowBps : 50;
+  function bpsFor(tk) {
+    if (costByClass && classBy[tk] && costByClass[classBy[tk]] != null) return costByClass[classBy[tk]];
+    return costBps;
+  }
+  const allDates = new Set();
+  for (const tk of Object.keys(daily)) {
+    for (const d of daily[tk].dates) allDates.add(d);
+  }
+  const masterDates = Array.from(allDates).sort();
+  const dailyPx = {};
+  for (const tk of Object.keys(daily)) {
+    const D = daily[tk];
+    const m = {};
+    for (let i = 0; i < D.dates.length; i++) m[D.dates[i]] = D.ac[i];
+    dailyPx[tk] = m;
+  }
+  const rfPx = dailyPx[rfTicker] || null;
+  const datesByYM = {};
+  for (let i = 0; i < masterDates.length; i++) {
+    const d = masterDates[i];
+    const ym = d.slice(0, 7);
+    if (!datesByYM[ym]) datesByYM[ym] = [];
+    datesByYM[ym].push(d);
+  }
+  const out = [];
+  let prevWeights = {};
+  for (let h = 0; h < wHistory.length; h++) {
+    const decisionMonth = wHistory[h].date;
+    const weights = wHistory[h].weights;
+    const tIdx = months.indexOf(decisionMonth);
+    if (tIdx < 0 || tIdx + 1 >= months.length) { prevWeights = weights; continue; }
+    const holdingMonth = months[tIdx + 1];
+    const holdingDates = datesByYM[holdingMonth] || [];
+    if (!holdingDates.length) { prevWeights = weights; continue; }
+    const allTk = {};
+    for (const tk of Object.keys(weights)) allTk[tk] = true;
+    for (const tk of Object.keys(prevWeights)) allTk[tk] = true;
+    let costFrac = 0;
+    for (const tk of Object.keys(allTk)) {
+      const dW = Math.abs((weights[tk] || 0) - (prevWeights[tk] || 0));
+      if (dW <= 1e-9) continue;
+      costFrac += dW * (bpsFor(tk) / 10000);
+    }
+    // Day 1: realise the one-off turnover cost, no price exposure yet.
+    // Day 2..end: daily-rebalanced exposure to the target weights — the
+    // standard convention for benchmark-relative attribution. Returns are
+    // computed at constant target weight each day, with cash earning rf
+    // (and paying rf+borrow on the levered portion). The monthly buy-and-hold
+    // path produces near-identical regression coefficients for unlevered
+    // strategies, but daily-rebalanced is robust under heavy leverage / shorts
+    // (TSMOM-style) and gives a cleaner OLS reading.
+    for (let di = 0; di < holdingDates.length; di++) {
+      const d = holdingDates[di];
+      let r;
+      if (di === 0) {
+        r = -costFrac;
+      } else {
+        const dPrev = holdingDates[di - 1];
+        let invested = 0;
+        let priceRet = 0;
+        for (const tk of Object.keys(weights)) {
+          const w = weights[tk];
+          if (Math.abs(w) < 1e-9) continue;
+          const p1 = dailyPx[tk] && dailyPx[tk][d];
+          const p0 = dailyPx[tk] && dailyPx[tk][dPrev];
+          if (p0 == null || p1 == null || p0 <= 0) continue;
+          priceRet += w * (p1 / p0 - 1);
+          invested += Math.abs(w);
+        }
+        const cash = 1 - invested;
+        let rfD = 0;
+        if (rfPx) {
+          const rfP1 = rfPx[d], rfP0 = rfPx[dPrev];
+          if (rfP0 != null && rfP1 != null && rfP0 > 0) rfD = rfP1 / rfP0 - 1;
+        }
+        const borrowD = borrowBps / 10000 / 252;
+        const cashRet = cash >= 0 ? cash * rfD : cash * (rfD + borrowD);
+        r = priceRet + cashRet;
+      }
+      out.push({ date: d, ret: +r.toFixed(8) });
+    }
+    prevWeights = weights;
+  }
+  return out;
+}
+
+// ============================================================================
 // 5. Strategy 1 — Petr-style rotational momentum
 // ============================================================================
 
@@ -974,13 +1087,23 @@ function main() {
     if (!stats) { console.warn(`  no equity produced for ${key}`); continue; }
     console.log(`  CAGR=${(stats.cagr*100).toFixed(2)}%  Vol=${(stats.vol*100).toFixed(2)}%  Sharpe=${stats.sharpe}  MaxDD=${(stats.maxDD*100).toFixed(2)}%  Turnover=${stats.annTurnover}/yr`);
     console.log(`  Diag: avgEligible=${diag.avgEligible}  avgGross=${diag.avgGross}  avgHoldings=${diag.avgHoldings}  cash%=${diag.pctEmpty}%  fullN%=${diag.pctFullN}%  partialN%=${diag.pctPartialN}%`);
+    // Daily-resolution P&L for the attribution layer (additive — does not
+    // affect the monthly equity series or any existing stats).
+    const dailyReturns = buildDailyReturns(timeline, wHistory, stratOpts);
+    if (dailyReturns.length) {
+      console.log(`  Daily P&L: ${dailyReturns.length} days (${dailyReturns[0].date} -> ${dailyReturns[dailyReturns.length - 1].date})`);
+    }
     out.strategies[key] = {
       name: strategies[key].name,
       stats,
       diag,
       equity,
       // Sample every 6 months but always include the final snapshot
-      weightSnapshots: wHistory.filter((_, i) => i % 6 === 0 || i === wHistory.length - 1)
+      weightSnapshots: wHistory.filter((_, i) => i % 6 === 0 || i === wHistory.length - 1),
+      // Full monthly weight history (every month). Used by attribution.py.
+      weightHistory: wHistory,
+      // Daily P&L for the attribution layer.
+      dailyReturns
     };
   }
 

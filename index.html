@@ -227,6 +227,22 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .bt-heatmap-tbl th{font-weight:600;color:var(--t3);padding:4px 3px;font-size:9px;background:var(--sa)}
 .bt-heatmap-tbl td{text-align:center;padding:5px 2px;font-size:9px;border:1px solid var(--bd);min-width:30px}
 .bt-heatmap-tbl td.yr{font-weight:700;color:var(--t2);background:var(--sa)}
+.bt-attr-tbl{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--sf)}
+.bt-attr-tbl th{font-weight:600;font-size:10px;color:var(--t3);padding:8px 12px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bd);text-align:right}
+.bt-attr-tbl th.label{text-align:left}
+.bt-attr-tbl td{padding:7px 12px;border-bottom:1px solid var(--bl);text-align:right;color:var(--t1);font-weight:600}
+.bt-attr-tbl td.label{text-align:left;font-weight:500;color:var(--t2);font-family:inherit;font-size:11px}
+.bt-attr-tbl td.dim{color:var(--t3);font-weight:400}
+.bt-attr-tbl tr:last-child td{border-bottom:none}
+.bt-attr-flag{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:var(--rs);font-size:12px;line-height:1.5;margin-top:12px;border-left:4px solid currentColor}
+.bt-attr-flag.go{background:var(--gb);border-color:var(--gn);color:#065F46}
+.bt-attr-flag.warn{background:var(--ab);border-color:var(--am);color:#92400E}
+.bt-attr-flag.bad{background:var(--rb);border-color:var(--rd);color:#991B1B}
+.bt-attr-flag .ico{font-size:18px;line-height:1;flex-shrink:0;font-weight:700}
+.bt-attr-flag .body{flex:1}
+.bt-attr-flag .body strong{display:block;font-size:13px;margin-bottom:3px}
+.bt-attr-flag .body .meta{font-size:10px;opacity:.85;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.bt-attr-note{margin-top:8px;font-size:10px;color:var(--t3);line-height:1.5;font-style:italic;padding:0 4px}
 .bt-snap-controls{display:inline-flex;gap:4px;align-items:center}
 .bt-snap-btn{padding:3px 9px;font-size:11px;font-family:inherit;background:var(--sf);border:1px solid var(--bd);border-radius:4px;color:var(--t2);cursor:pointer}
 .bt-snap-btn:hover{border-color:var(--t1);color:var(--t1)}
@@ -363,6 +379,7 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
   <div class="bt-chart-card"><div class="bt-chart-h">Equity curves (log scale, $1 start)</div><div class="bt-chart-body" id="btEquity"></div></div>
   <div class="bt-chart-card"><div class="bt-chart-h">Drawdowns</div><div class="bt-chart-body" id="btDrawdown"></div></div>
 </div>
+<div id="btAttribution" style="margin-top:14px"></div>
 <div class="bt-chart-card" style="margin-top:14px"><div class="bt-chart-h">Monthly returns &mdash; <span id="btHeatLbl"></span></div><div class="bt-chart-body" id="btHeatmap" style="height:auto"></div></div>
 <div class="bt-chart-card" style="margin-top:14px"><div class="bt-chart-h"><span>Target portfolio &mdash; <span id="btWeightsLbl"></span></span><span class="bt-snap-controls"><button class="bt-snap-btn" id="btSnapPrev" title="Previous snapshot">&#8249;</button><select id="btSnapSel" class="bt-snap-sel"></select><button class="bt-snap-btn" id="btSnapNext" title="Next snapshot">&#8250;</button><button class="bt-snap-btn" id="btSnapLatest" title="Jump to latest" style="margin-left:6px">latest</button></span></div><div class="bt-chart-body" id="btWeights" style="height:auto;padding:10px 14px"></div></div>
 </div>
@@ -781,10 +798,125 @@ function renderBT(){
   renderBTStats();
   renderBTEquity();
   renderBTDrawdown();
+  renderBTAttribution();
   renderBTHeatmap();
   renderBTWeights();
 }
 
+function renderBTAttribution(){
+  var host=document.getElementById("btAttribution"); if(!host)return;
+  host.innerHTML="";
+  if(!BT_DATA || !BT_DATA.attribution){return}
+  if(!BT_ACTIVE.length){return}
+  var k=BT_ACTIVE[0];
+  if(k==="SPY"){return}
+  var a=BT_DATA.attribution[k]; if(!a){return}
+  var meta=BT_DATA.attributionMeta||{};
+  function pct(x,d){if(x==null||!isFinite(x))return"\u2014";d=d==null?2:d;return (x*100).toFixed(d)+"%"}
+  function num(x,d){if(x==null||!isFinite(x))return"\u2014";d=d==null?2:d;return (+x).toFixed(d)}
+  var g=a.gross||{}, ew=a.vsEW||{}, ac=a.vsACWI||{};
+  var benchLbl = a.benchmarkTicker ? a.benchmarkTicker : "ACWI";
+  var ewLbl = "EW basket ("+(meta.ewUniverseSize||"")+")";
+  var html = "<div class=\"bt-chart-card\">"+
+    "<div class=\"bt-chart-h\">Benchmark-relative attribution &mdash; <span style=\"color:var(--t3);text-transform:none;letter-spacing:0;font-weight:400\">"+btName(k)+", daily OLS over "+(g.start||"")+" \u2192 "+(g.end||"")+" ("+(g.n_days||"?")+" days)</span></div>"+
+    "<div style=\"padding:14px 18px\">"+
+    "<table class=\"bt-attr-tbl\">"+
+      "<thead><tr><th class=\"label\">&nbsp;</th><th>Gross</th><th>vs "+ewLbl+"</th><th>vs "+benchLbl+"</th></tr></thead>"+
+      "<tbody>"+
+        "<tr><td class=\"label\">Annualised return</td><td>"+pct(g.ann_return)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+        "<tr><td class=\"label\">Annualised vol</td><td>"+pct(g.ann_vol)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+        "<tr><td class=\"label\">Sharpe</td><td>"+num(g.sharpe)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+        "<tr><td class=\"label\">Beta</td><td class=\"dim\">\u2014</td><td>"+num(ew.beta)+"</td><td>"+(ac.beta!=null?num(ac.beta):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+        "<tr><td class=\"label\">Annualised alpha</td><td class=\"dim\">\u2014</td><td>"+pct(ew.alpha_ann)+"</td><td>"+(ac.alpha_ann!=null?pct(ac.alpha_ann):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+        "<tr><td class=\"label\">Residual Sharpe</td><td class=\"dim\">\u2014</td><td>"+num(ew.resid_sharpe)+"</td><td>"+(ac.resid_sharpe!=null?num(ac.resid_sharpe):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+        "<tr><td class=\"label\">Alpha t-stat</td><td class=\"dim\">\u2014</td><td>"+num(ew.alpha_tstat)+"</td><td>"+(ac.alpha_tstat!=null?num(ac.alpha_tstat):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+        "<tr><td class=\"label\">R\u00b2</td><td class=\"dim\">\u2014</td><td>"+num(ew.rsq,3)+"</td><td>"+(ac.rsq!=null?num(ac.rsq,3):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+      "</tbody></table>";
+  var gs = g.sharpe, rs = ew.resid_sharpe;
+  if (gs != null && isFinite(gs) && rs != null && isFinite(rs) && Math.abs(gs) > 1e-9){
+    var ratio = rs / gs;
+    var flagCls, flagIco, flagHdr, flagDesc;
+    if (ratio > 0.7){
+      flagCls="go"; flagIco="\u2713"; flagHdr="Signal adds real value beyond benchmark exposure";
+      flagDesc="Residual Sharpe is more than 70% of gross \u2014 the strategy is not just delivering market beta.";
+    } else if (ratio >= 0.3){
+      flagCls="warn"; flagIco="!"; flagHdr="Signal partially explained by benchmark \u2014 useful but correlated";
+      flagDesc="Some of the gross Sharpe is real alpha, but a meaningful share comes from passive beta exposure.";
+    } else {
+      flagCls="bad"; flagIco="\u26a0"; flagHdr="Signal largely a repackaged benchmark exposure \u2014 review";
+      flagDesc="Residual Sharpe is less than 30% of gross. Most of the headline Sharpe is explainable by the EW basket beta.";
+    }
+    html += "<div class=\"bt-attr-flag "+flagCls+"\"><div class=\"ico\">"+flagIco+"</div><div class=\"body\"><strong>"+flagHdr+"</strong>"+flagDesc+"<div class=\"meta\">Residual Sharpe / Gross Sharpe = "+num(rs)+" / "+num(gs)+" = "+num(ratio,2)+" &nbsp;&middot;&nbsp; Decision uses EW basket (stricter test).</div></div></div>";
+  }
+  if (!a.benchmarkTicker){
+    html += "<div class=\"bt-attr-note\">Single-ETF benchmark column shows \u2014 because ACWI/URTH/VT is not yet loaded. Run <code>node fetch_benchmarks.js</code> and re-run <code>python3 attribution.py</code> to populate.</div>";
+  }
+  html += "</div></div>";
+  var rolling = a.rollingResidualSharpe_vsEW || [];
+  if (rolling.length){
+    html += "<div class=\"bt-chart-card\" style=\"margin-top:14px\"><div class=\"bt-chart-h\">Rolling 3-year residual Sharpe vs EW basket &mdash; <span style=\"color:var(--t3);text-transform:none;letter-spacing:0;font-weight:400\">flag triggered when below 50% of full-sample residual Sharpe ("+num(ew.resid_sharpe)+")</span></div><div class=\"bt-chart-body\" id=\"btResRollChart\"></div></div>";
+  }
+  host.innerHTML = html;
+  if (rolling.length){
+    drawRollingResidualSharpe(document.getElementById("btResRollChart"), rolling, ew.resid_sharpe || 0);
+  }
+}
+
+function drawRollingResidualSharpe(host, rolling, fullSampleRS){
+  if(!host)return;
+  var W=720, H=280, mL=42, mR=12, mT=14, mB=24;
+  host.innerHTML="";
+  var svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  svg.setAttribute("preserveAspectRatio","none");
+  host.appendChild(svg);
+  function add(t,a){var e=document.createElementNS("http://www.w3.org/2000/svg",t);for(var k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e}
+  var n = rolling.length;
+  var vals = rolling.map(function(p){return p.rs});
+  var minY = Math.min.apply(null, vals.concat([0, fullSampleRS*0.5, fullSampleRS]));
+  var maxY = Math.max.apply(null, vals.concat([0, fullSampleRS*0.5, fullSampleRS]));
+  var pad = (maxY-minY)*0.1; if(pad<0.05)pad=0.05;
+  minY-=pad; maxY+=pad;
+  var W2=W-mL-mR, H2=H-mT-mB;
+  function xPos(i){return mL + (i/(Math.max(n-1,1)))*W2}
+  function yPos(v){return mT + H2*(1 - (v-minY)/(maxY-minY))}
+  var step=0.25; if(maxY-minY>2)step=0.5; if(maxY-minY>5)step=1;
+  for(var t=Math.ceil(minY/step)*step; t<=maxY; t+=step){
+    var y=yPos(t);
+    add("line",{x1:mL,x2:W-mR,y1:y,y2:y,stroke:"#E8E6E1","stroke-width":1});
+    add("text",{x:mL-4,y:y+3,"text-anchor":"end","font-size":9,fill:"#9E9A92","font-family":"JetBrains Mono"}).textContent=t.toFixed(2);
+  }
+  if(0>=minY && 0<=maxY){
+    var y0=yPos(0);
+    add("line",{x1:mL,x2:W-mR,y1:y0,y2:y0,stroke:"#9E9A92","stroke-width":1,"stroke-dasharray":"3,3"});
+  }
+  var thresh = fullSampleRS * 0.5;
+  if(thresh>=minY && thresh<=maxY){
+    var yT=yPos(thresh);
+    add("line",{x1:mL,x2:W-mR,y1:yT,y2:yT,stroke:"#D97706","stroke-width":1.2,"stroke-dasharray":"5,3"});
+    add("text",{x:W-mR-4,y:yT-4,"text-anchor":"end","font-size":9,fill:"#D97706","font-family":"JetBrains Mono","font-weight":600}).textContent="50% threshold ("+thresh.toFixed(2)+")";
+  }
+  var lastYr=null;
+  for(var i=0;i<n;i++){
+    var yr=rolling[i].date.slice(0,4);
+    if(yr!==lastYr && (yr.endsWith("0")||yr.endsWith("5")||i===0||i===n-1)){
+      var xT=xPos(i);
+      add("line",{x1:xT,x2:xT,y1:H-mB,y2:H-mB+3,stroke:"#9E9A92","stroke-width":1});
+      add("text",{x:xT,y:H-8,"text-anchor":"middle","font-size":9,fill:"#9E9A92","font-family":"JetBrains Mono"}).textContent=yr;
+      lastYr=yr;
+    }
+  }
+  add("line",{x1:mL,x2:mL,y1:mT,y2:H-mB,stroke:"#9E9A92","stroke-width":1});
+  add("line",{x1:mL,x2:W-mR,y1:H-mB,y2:H-mB,stroke:"#9E9A92","stroke-width":1});
+  var basePath="";
+  for(var i=0;i<n;i++){basePath += (i?" L":"M") + xPos(i).toFixed(1) + " " + yPos(rolling[i].rs).toFixed(1)}
+  add("path",{d:basePath,stroke:"#2563EB","stroke-width":1.7,fill:"none","stroke-linejoin":"round","stroke-opacity":0.95});
+  for(var i=0;i<n;i++){
+    if(rolling[i].rs < thresh){
+      add("circle",{cx:xPos(i).toFixed(1),cy:yPos(rolling[i].rs).toFixed(1),r:2.4,fill:"#DC2626","fill-opacity":0.85});
+    }
+  }
+}
 function renderBTStats(){
   var box=document.getElementById("btStats"); box.innerHTML="";
   if(!BT_ACTIVE.length) return;

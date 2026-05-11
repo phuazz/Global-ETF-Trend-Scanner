@@ -127,7 +127,7 @@ This is the AQR/published-research convention. It costs the strategy the first d
 |---|---|---|
 | Universe | All eligible tickers in `fetch_data.js::UNI` (56), filtered to ETFs in equity-like classes by default | Optional flag to restrict to "US Equity" + "Intl Equity" + "EM Equity" to mirror Petr's stock setup. |
 | Bar frequency | Monthly | |
-| Signal | 12-1 momentum: `r(t-12 → t-1)` (skip the most recent month to avoid the 1-month reversal effect) | Robustness: also test 6-1, 9-1, 12-0 (see §10). |
+| Signal | 12-1 momentum: `r(t-12 → t-1)` (skip the most recent month to avoid the 1-month reversal effect) | Robustness: also test 6-1, 9-1, 12-0 (see §11). |
 | Regime gate | SPY (or asset's own benchmark) above its 10-month SMA computed on monthly closes. Off-regime → 100% cash. | Equivalent to the daily 200-day MA, but cleaner on monthly bars. |
 | Selection | Top *N = 5* by 12-1 momentum among regime-on tickers | |
 | Sizing | **Vol-target each holding** to 10% annualised vol, then equal-risk weight, then renormalise to 100% gross. Cap each position at 30% gross. | Detailed below. |
@@ -360,7 +360,78 @@ Plus visualisations:
 
 ---
 
-## 10. Robustness battery
+## 10. Benchmark-relative attribution
+
+A headline Sharpe of 0.7 on the multi-signal composite tells you the strategy is profitable. It does not tell you whether the profit came from the signal or from passive beta to the universe. This section documents the additive layer that decomposes each strategy's gross return into market beta and residual alpha — the difference between "I built a momentum signal" and "I bought ACWI and gave it a different name".
+
+The artefacts are: `fetch_benchmarks.js` (pulls ACWI / URTH / VT into `history/`), `attribution.py` (runs the regressions and writes back to `backtest_results.json`), and a Backtest-tab card in `index.html` that renders the comparison table, the decision flag, and the rolling residual Sharpe chart. None of the existing strategy logic in `backtest.js` is changed by this layer.
+
+### 10.1 The regression
+
+For each strategy *s* and each benchmark *b*, run the daily OLS
+
+```
+r_s,t = α_s,b + β_s,b × r_b,t + ε_s,b,t
+```
+
+where `r_s,t` is the strategy's daily P&L return on date *t* and `r_b,t` is the benchmark's daily return on the same date. Fit with `statsmodels.OLS` (not `numpy.lstsq` — we want the standard errors and t-statistics that come with the OLS object). The regression runs over the strategy's full daily-return window. Reported, annualised:
+
+- α — `params['const'] × 252`
+- β — `params['x']`
+- Residual standard deviation — `np.std(resid, ddof=2) × √252`
+- Residual Sharpe — α / residual std (zero risk-free rate, consistent with §9)
+- α t-statistic from the regression's standard errors
+- R² as a complementary read on how much of the strategy is explained by passive beta
+
+Residual Sharpe — annualised alpha divided by annualised residual stdev — is the key number. It answers: *if I hedged out my beta exposure, what Sharpe would the leftover have?*
+
+### 10.2 Two benchmarks: equal-weighted basket and ACWI
+
+We regress each strategy against two benchmarks because each answers a different question.
+
+**Equal-weighted basket of the full universe.** Built in `attribution.py::ew_basket_returns` as the cross-sectional mean of all daily universe returns, with absent tickers excluded from each day's mean (equivalent to a daily 1/N rebalance over the eligible set). This is the *stricter* test, because the EW basket is constructed from the same names the strategy trades. If the strategy is just a noisier version of "buy everything in the universe", its alpha against EW will be near zero. The decision flag uses this column.
+
+**ACWI as a single-ETF proxy** (with URTH then VT as fallbacks; whichever loads first wins). This is what an investor would actually consider as the alternative — buy one ETF, go home. It is a *looser* test because ACWI is global equity only and our universe spans bonds, commodities, and currencies. A strategy can post a strong alpha against ACWI simply by holding TLT through a bond bull market, which is not signal value. We report it because it is the benchmark the investor will compare against in practice.
+
+If a strategy looks strong vs ACWI but flat vs EW, the value-add is asset-class selection, not signal. That is a legitimate finding, but it is a different product from "we have a momentum edge".
+
+### 10.3 The daily-rebalanced reconstruction
+
+`backtest.js` runs at monthly cadence: weights are set at the close of the last trading day of month *t*, executed at the close of the first trading day of month *t+1*, and held buy-and-hold for the rest of the month. That convention is correct for the backtest itself (§4) — it matches how a real investor would trade and pays the implementable cost of the one-day fill lag.
+
+For the daily regression we cannot use the buy-and-hold within-month return path. The reason is the AQR-leveraged TSMOM variant, which runs at ~5× gross exposure. Within a single month, an asset that triples then halves does not return to where it started — the buy-and-hold path through high volatility produces compounding distortion that has nothing to do with the strategy's signal. Run the regression on those returns and β explodes, α flips sign month-to-month, and the OLS R² collapses. We saw exactly this in an earlier prototype and rejected it.
+
+`buildDailyReturns()` in `backtest.js` therefore reconstructs the daily P&L assuming the *target* monthly weights are held flat in dollar terms within the month — equivalent to a daily rebalance back to monthly targets. Under unit gross this is a near-identical path to buy-and-hold within the month; under leveraged gross it strips out the within-month compounding effect that would otherwise contaminate the regression. The reconstruction does not change any reported strategy statistic in §9 — `equity`, `weightSnapshots`, the monthly heatmap, and the CAGR/Sharpe/MaxDD figures are all unchanged.
+
+Output field: `strategies[k].dailyReturns` is the daily-rebalanced reconstruction, written alongside the unchanged monthly `equity` series. `strategies[k].weightHistory` holds the full monthly target weights so the daily reconstruction is reproducible.
+
+### 10.4 Rolling residual Sharpe
+
+A full-sample alpha hides regime shifts. A strategy that earned a 1.5 residual Sharpe vs EW in 2014–2018 and 0.0 since 2020 looks fine on a single-window read; rolling exposes the decay.
+
+The rolling window is **756 trading days** (three years), sampled every **21 trading days** (one month). For each window, refit the OLS, compute the residual Sharpe, and record the value at the window's end date. The series is stored at `attribution[strategy].rollingResidualSharpe_vsEW`.
+
+Three years is short enough to capture genuine regime changes (a strategy that stopped working in 2021 will show up by 2024) and long enough that the alpha estimate is not pure noise (n ≈ 756 daily observations gives a usable t-statistic and a stable residual stdev). A one-year window adds noise without information; a five-year window smooths over the decay we are trying to detect. Step size of one month is the natural rebalance cadence and keeps the rendered series compact for the dashboard chart.
+
+The chart overlays a 50%-of-full-sample-residual-Sharpe threshold line; rolling values below the line are flagged with a red dot. The 50% threshold is a soft warning, not a hard rule — a single window dipping below is normal; two years living there means the strategy has stopped working.
+
+### 10.5 Decision-flag thresholds
+
+The dashboard renders a coloured flag based on the ratio `residual_sharpe_vsEW / gross_sharpe`:
+
+| Ratio | Flag | Reading |
+|---|---|---|
+| > 0.7 | green | Signal adds real value beyond benchmark exposure. The strategy is not just delivering market beta. |
+| 0.3 – 0.7 | amber | Mixed. Some of the gross Sharpe is real alpha; some is passive beta. Worth running, but understand the dependence. |
+| < 0.3 | red | The signal is largely a repackaged benchmark exposure. Reconsider before deploying. |
+
+The ratio is computed against the **EW basket** residual Sharpe — the stricter benchmark of the two. Using EW means a strategy that passes this test is delivering alpha relative to *the same names it trades*; using ACWI would let strategies pass on asset-class allocation alone, which is a different and weaker claim.
+
+The thresholds (0.7 / 0.3) are priors, not estimates. They are deliberately wide and asymmetric: anything above 0.7 should be unambiguously net-positive (most well-documented published strategies sit at 0.4–0.6 against their natural benchmark, so 0.7 is a high bar), and anything below 0.3 should be unambiguously flagged. The amber band absorbs the realistic case where a strategy has genuine signal but rides correlated factors. As with the rolling threshold in §10.4, these are decision aids — the final call is qualitative.
+
+---
+
+## 11. Robustness battery
 
 This is the most overlooked part of any backtest. A strategy that is fragile to a parameter change is probably curve-fit.
 
@@ -378,7 +449,7 @@ This is the most overlooked part of any backtest. A strategy that is fragile to 
 
 ---
 
-## 11. What "good" looks like (reasonable expectations)
+## 12. What "good" looks like (reasonable expectations)
 
 A correctly-implemented version of these strategies on the ETF universe should produce, roughly:
 
@@ -394,7 +465,7 @@ If the backtest produces CAGR > 25% or Sharpe > 1.5 on this universe, **assume a
 
 ---
 
-## 12. What we are *not* doing in v1, on purpose
+## 13. What we are *not* doing in v1, on purpose
 
 - **No options or leverage products.** We will compute the AQR-leveraged number but not actually backtest holding 3× ETFs.
 - **No intraday execution.** Monthly close-to-open fills only.
@@ -406,7 +477,7 @@ These are all reasonable next-step extensions. Document them; defer them.
 
 ---
 
-## 13. Implementation roadmap
+## 14. Implementation roadmap
 
 | Step | Artefact | Status |
 |---|---|---|
@@ -415,7 +486,8 @@ These are all reasonable next-step extensions. Document them; defer them.
 | 3 | `backtest.js` — implements the three strategies, writes `backtest_results.json` | done |
 | 4 | `index.html` Backtest tab — visualises `backtest_results.json` | done |
 | 5 | GitHub Actions workflow refresh — run history fetch weekly, backtest on demand | follow-up |
-| 6 | Robustness battery (§10) | partial; full version deferred |
+| 6 | Robustness battery (§11) | partial; full version deferred |
+| 7 | Benchmark-relative attribution (`fetch_benchmarks.js`, `attribution.py`, dashboard card) (§10) | done |
 
 ---
 
