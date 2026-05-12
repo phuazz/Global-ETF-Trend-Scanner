@@ -1142,9 +1142,13 @@ function renderBTWeights(){
   if(!BT_ACTIVE.length){host.innerHTML="";if(sel)sel.innerHTML="";return}
   var k=BT_ACTIVE[0];
   if(k==="SPY"){host.innerHTML='<div style="color:var(--t3);font-size:11px">Buy &amp; hold benchmark.</div>';lblHost.textContent="SPY";if(sel)sel.innerHTML="";return}
-  var s=BT_DATA.strategies[k]; if(!s||!s.weightSnapshots||!s.weightSnapshots.length){host.innerHTML="";if(sel)sel.innerHTML="";return}
+  // Prefer the full monthly weightHistory (every rebalance) when present;
+  // fall back to the legacy every-6-months weightSnapshots so older
+  // backtest_results.json files still render.
+  var s=BT_DATA.strategies[k]; if(!s){host.innerHTML="";if(sel)sel.innerHTML="";return}
+  var snaps=(s.weightHistory && s.weightHistory.length) ? s.weightHistory : s.weightSnapshots;
+  if(!snaps||!snaps.length){host.innerHTML="";if(sel)sel.innerHTML="";return}
   lblHost.textContent=btName(k);
-  var snaps=s.weightSnapshots;
   // Build / refresh the dropdown when the strategy changes (or first render).
   if(sel.dataset.k!==k){
     sel.innerHTML="";
