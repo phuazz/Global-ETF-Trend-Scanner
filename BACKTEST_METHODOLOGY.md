@@ -443,6 +443,21 @@ The ratio is computed against the **EW basket** residual Sharpe — the stricter
 
 The thresholds (0.7 / 0.3) are priors, not estimates. They are deliberately wide and asymmetric: anything above 0.7 should be unambiguously net-positive (most well-documented published strategies sit at 0.4–0.6 against their natural benchmark, so 0.7 is a high bar), and anything below 0.3 should be unambiguously flagged. The amber band absorbs the realistic case where a strategy has genuine signal but rides correlated factors. As with the rolling threshold in §10.4, these are decision aids — the final call is qualitative.
 
+### 10.6 Long-sample monthly OLS
+
+The daily OLS regression is statistically powerful (~2,500 daily observations per strategy) but bounded by Yahoo's `interval=1d` history, which only reaches back ~10 years. The 2016–2026 window is structurally unfavourable for trend / momentum strategies — it is overwhelmingly risk-on, missing the 2000–02 tech-bust and 2008–09 GFC regimes where these strategies historically earn their keep. A 10-year alpha estimate over such a regime says little about a 30-year alpha estimate over a balanced sample.
+
+`attribution.py` therefore also runs the same regression on **monthly returns** built from the strategy's `equity` series (back to 1994) and the universe's monthly bars (back to inception per ticker). Output is stored at `attribution[strategy].monthly` with the same `{gross, vsEW, vsACWI}` shape as the daily layer, plus a `range` field giving the window. Annualisation uses 12 periods/year. Minimum sample size is 24 months.
+
+The monthly variant is a *complement* to the daily, not a replacement:
+
+- **Daily** is the high-resolution test. The OLS standard errors are tight, so small residual Sharpes are statistically defensible. But the window is narrow.
+- **Monthly** is the long-window test. The standard errors are wider (~12 vs 252 observations per year), so a borderline alpha is harder to call significant — but the sample includes regimes the daily window cannot reach.
+
+When the two disagree, the answer is usually "the daily window is unrepresentative". For example, `petr_eq` showed a daily residual Sharpe of 0.04 against the matched EW basket (effectively zero) but a monthly residual Sharpe of 0.32 with t(α)=1.77 over 385 months — well into the amber band and approaching statistical significance. The 2016–2026 daily window simply missed the regimes where the strategy adds value.
+
+The dashboard renders both tables in the attribution card, daily on top and monthly underneath, so the user can see disagreements at a glance.
+
 ---
 
 ## 11. Robustness battery

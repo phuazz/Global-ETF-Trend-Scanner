@@ -854,6 +854,28 @@ function renderBTAttribution(){
   if (!a.benchmarkTicker){
     html += "<div class=\"bt-attr-note\">Single-ETF benchmark column shows \u2014 because ACWI/URTH/VT is not yet loaded. Run <code>node fetch_benchmarks.js</code> and re-run <code>python3 attribution.py</code> to populate.</div>";
   }
+  // Long-sample monthly OLS \u2014 sibling sub-section using the strategy's monthly
+  // equity series (back to 1994), which captures regimes the daily series
+  // misses (dot-com, GFC). Same regression form; annualised at 12 periods/yr.
+  var m = a.monthly;
+  if (m && (m.gross || m.vsEW || m.vsACWI)){
+    var gm = m.gross||{}, ewm = m.vsEW||{}, acm = m.vsACWI||{};
+    var mRange = m.range || [];
+    html += "<div style=\"margin-top:18px;padding-top:14px;border-top:1px dashed var(--bd)\">"+
+      "<div style=\"font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px\">Long-sample monthly OLS &mdash; <span style=\"text-transform:none;letter-spacing:0;font-weight:400\">"+(mRange[0]||"")+" \u2192 "+(mRange[1]||"")+" ("+(mRange[2]||"?")+" months)</span></div>"+
+      "<table class=\"bt-attr-tbl\">"+
+        "<thead><tr><th class=\"label\">&nbsp;</th><th>Gross</th><th>vs "+ewLbl+"</th><th>vs "+benchLbl+"</th></tr></thead>"+
+        "<tbody>"+
+          "<tr><td class=\"label\">Annualised return</td><td>"+pct(gm.ann_return)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+          "<tr><td class=\"label\">Annualised vol</td><td>"+pct(gm.ann_vol)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+          "<tr><td class=\"label\">Sharpe</td><td>"+num(gm.sharpe)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+          "<tr><td class=\"label\">Beta</td><td class=\"dim\">\u2014</td><td>"+num(ewm.beta)+"</td><td>"+(acm.beta!=null?num(acm.beta):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+          "<tr><td class=\"label\">Annualised alpha</td><td class=\"dim\">\u2014</td><td>"+pct(ewm.alpha_ann)+"</td><td>"+(acm.alpha_ann!=null?pct(acm.alpha_ann):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+          "<tr><td class=\"label\">Residual Sharpe</td><td class=\"dim\">\u2014</td><td>"+num(ewm.resid_sharpe)+"</td><td>"+(acm.resid_sharpe!=null?num(acm.resid_sharpe):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+          "<tr><td class=\"label\">Alpha t-stat</td><td class=\"dim\">\u2014</td><td>"+num(ewm.alpha_tstat)+"</td><td>"+(acm.alpha_tstat!=null?num(acm.alpha_tstat):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+          "<tr><td class=\"label\">R\u00b2</td><td class=\"dim\">\u2014</td><td>"+num(ewm.rsq,3)+"</td><td>"+(acm.rsq!=null?num(acm.rsq,3):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+        "</tbody></table></div>";
+  }
   html += "</div></div>";
   var rolling = a.rollingResidualSharpe_vsEW || [];
   if (rolling.length){
