@@ -814,6 +814,15 @@ function renderBTAttribution(){
   var meta=BT_DATA.attributionMeta||{};
   function pct(x,d){if(x==null||!isFinite(x))return"\u2014";d=d==null?2:d;return (x*100).toFixed(d)+"%"}
   function num(x,d){if(x==null||!isFinite(x))return"\u2014";d=d==null?2:d;return (+x).toFixed(d)}
+  // DD reduction = 1 - (strategy DD / benchmark DD). Positive (green) = strategy
+  // had a shallower drawdown than the benchmark. Negative (red) = worse.
+  // Both DDs are negative; we compare absolute values.
+  function ddRed(stratDD, benchDD){
+    if(stratDD==null||benchDD==null||!isFinite(stratDD)||!isFinite(benchDD)||benchDD===0)return"\u2014";
+    var r = 1 - Math.abs(stratDD)/Math.abs(benchDD);
+    var col = r > 0.1 ? "color:#065F46" : (r < -0.1 ? "color:#991B1B" : "");
+    return "<span style=\""+col+"\">"+(r*100).toFixed(1)+"%</span>";
+  }
   var g=a.gross||{}, ew=a.vsEW||{}, ac=a.vsACWI||{};
   var benchLbl = a.benchmarkTicker ? a.benchmarkTicker : "ACWI";
   // Use per-strategy basket size when present (equity-only variants regress
@@ -829,6 +838,8 @@ function renderBTAttribution(){
         "<tr><td class=\"label\">Annualised return</td><td>"+pct(g.ann_return)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
         "<tr><td class=\"label\">Annualised vol</td><td>"+pct(g.ann_vol)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
         "<tr><td class=\"label\">Sharpe</td><td>"+num(g.sharpe)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+        "<tr><td class=\"label\">Max drawdown</td><td>"+pct(g.max_dd)+"</td><td>"+pct(ew.bench_max_dd)+"</td><td>"+(ac.bench_max_dd!=null?pct(ac.bench_max_dd):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+        "<tr><td class=\"label\">DD reduction</td><td class=\"dim\">\u2014</td><td>"+ddRed(g.max_dd, ew.bench_max_dd)+"</td><td>"+ddRed(g.max_dd, ac.bench_max_dd)+"</td></tr>"+
         "<tr><td class=\"label\">Beta</td><td class=\"dim\">\u2014</td><td>"+num(ew.beta)+"</td><td>"+(ac.beta!=null?num(ac.beta):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
         "<tr><td class=\"label\">Annualised alpha</td><td class=\"dim\">\u2014</td><td>"+pct(ew.alpha_ann)+"</td><td>"+(ac.alpha_ann!=null?pct(ac.alpha_ann):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
         "<tr><td class=\"label\">Residual Sharpe</td><td class=\"dim\">\u2014</td><td>"+num(ew.resid_sharpe)+"</td><td>"+(ac.resid_sharpe!=null?num(ac.resid_sharpe):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
@@ -869,6 +880,8 @@ function renderBTAttribution(){
           "<tr><td class=\"label\">Annualised return</td><td>"+pct(gm.ann_return)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
           "<tr><td class=\"label\">Annualised vol</td><td>"+pct(gm.ann_vol)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
           "<tr><td class=\"label\">Sharpe</td><td>"+num(gm.sharpe)+"</td><td class=\"dim\">\u2014</td><td class=\"dim\">\u2014</td></tr>"+
+          "<tr><td class=\"label\">Max drawdown</td><td>"+pct(gm.max_dd)+"</td><td>"+pct(ewm.bench_max_dd)+"</td><td>"+(acm.bench_max_dd!=null?pct(acm.bench_max_dd):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
+          "<tr><td class=\"label\">DD reduction</td><td class=\"dim\">\u2014</td><td>"+ddRed(gm.max_dd, ewm.bench_max_dd)+"</td><td>"+ddRed(gm.max_dd, acm.bench_max_dd)+"</td></tr>"+
           "<tr><td class=\"label\">Beta</td><td class=\"dim\">\u2014</td><td>"+num(ewm.beta)+"</td><td>"+(acm.beta!=null?num(acm.beta):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
           "<tr><td class=\"label\">Annualised alpha</td><td class=\"dim\">\u2014</td><td>"+pct(ewm.alpha_ann)+"</td><td>"+(acm.alpha_ann!=null?pct(acm.alpha_ann):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+
           "<tr><td class=\"label\">Residual Sharpe</td><td class=\"dim\">\u2014</td><td>"+num(ewm.resid_sharpe)+"</td><td>"+(acm.resid_sharpe!=null?num(acm.resid_sharpe):"<span class=\"dim\">\u2014</span>")+"</td></tr>"+

@@ -458,6 +458,19 @@ When the two disagree, the answer is usually "the daily window is unrepresentati
 
 The dashboard renders both tables in the attribution card, daily on top and monthly underneath, so the user can see disagreements at a glance.
 
+### 10.7 Drawdown attribution
+
+Residual Sharpe is the right test for "does the signal add expected-return value above passive beta exposure". It is **not** the right test for "does the signal control risk better than the benchmark". A strategy can have a residual Sharpe of zero and still be the better holding if it cuts drawdown in half.
+
+Each attribution table therefore includes two drawdown-attribution rows:
+
+- **Max drawdown** — peak-to-trough drawdown of the strategy's NAV, the matched EW basket's NAV, and the ACWI NAV, all computed over the OLS window. A drawdown of −30% means the holding lost 30% from its peak before recovering.
+- **DD reduction** — `1 − |strategy_DD| / |benchmark_DD|`. Positive means the strategy had a shallower drawdown than the benchmark. >10% renders green, <−10% renders red, in between is neutral.
+
+The two-row layout makes both the absolute drawdown and the relative improvement directly comparable on the same line as the alpha and residual Sharpe. The reader can see at a glance whether a strategy with thin alpha is at least earning its keep through risk management. For example, `petr_eq` over the long sample (1994–2026) has only a 0.32 residual Sharpe vs the equity EW basket (amber band) but a **47% drawdown reduction** vs the same basket — −29.9% strategy vs −56.2% benchmark. That is a real product property, just a different one from "signal alpha".
+
+Drawdown is window-dependent: a 10-year DD measure is not directly comparable to a 32-year DD measure (the longer window has more chances to hit a bigger drawdown). For that reason DD is reported separately on the daily and monthly tables, with the window explicit in each card's header.
+
 ---
 
 ## 11. Robustness battery

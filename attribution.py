@@ -172,8 +172,20 @@ def benchmark_etf_returns(ac):
 # Statistics
 # ----------------------------------------------------------------------------
 
+def max_drawdown(rets):
+    """Max peak-to-trough drawdown of a return Series. Returns a negative float
+    (or 0.0 if no drawdown). NaN if the series is empty or all-NaN."""
+    r = rets.dropna()
+    if r.empty:
+        return float("nan")
+    nav = (1.0 + r).cumprod()
+    peak = nav.cummax()
+    dd = (nav / peak - 1.0).min()
+    return float(dd)
+
+
 def gross_stats(rets, periods_per_year):
-    """Annualised return, vol, Sharpe from a return Series at given frequency."""
+    """Annualised return, vol, Sharpe, max DD from a return Series."""
     rets = rets.dropna()
     n = len(rets)
     if n < 2:
@@ -189,6 +201,7 @@ def gross_stats(rets, periods_per_year):
         "ann_return": ann_return,
         "ann_vol": ann_vol,
         "sharpe": sharpe,
+        "max_dd": max_drawdown(rets),
         "n_obs": int(n),
         "start": rets.index[0].strftime("%Y-%m-%d"),
         "end": rets.index[-1].strftime("%Y-%m-%d"),
@@ -233,6 +246,9 @@ def run_ols(strat_ret, bench_ret, periods_per_year=252, min_obs=30):
         "resid_std_ann": resid_std_ann,
         "resid_sharpe": resid_sharpe,
         "alpha_tstat": alpha_t,
+        # Benchmark max DD over the same overlapping window — lets the dashboard
+        # show "DD strategy vs DD benchmark" for the drawdown attribution row.
+        "bench_max_dd": max_drawdown(df["x"]),
         "n_obs": int(len(df)),
     }
 
