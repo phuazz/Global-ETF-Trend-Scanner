@@ -362,12 +362,18 @@ function runMonthly(timeline, decide, opts = {}) {
       mom12_1: tk => mom12_1(prices[tk], t),
       momKtoJ: (tk, k, j) => momKtoJ(prices[tk], t, k, j),
       sma: (tk, n) => trailingSMA(prices[tk], t, n),
-      prevWeights: weights
+      prevWeights: weights,
+      // Optional side-channel: a strategy may populate `signals[ticker]` with
+      // the decision-time signal value(s) that put each holding in the basket
+      // (e.g. {mom12_1: 0.52} for Petr). runMonthly captures this into
+      // wHistory so the dashboard can show "why" each name is held.
+      signals: {}
     };
 
     let target = {};
     try { target = decide(t, ctx) || {}; }
     catch (e) { console.warn(`decide failed at ${months[t]}:`, e.message); target = {}; }
+    const decisionSignals = ctx.signals || {};
 
     diag.eligibleSum += ctx.eligibleTickers.length; diag.eligibleCount++;
     const tgtSize = Object.values(target).filter(w => Math.abs(w) > 1e-6).length;
@@ -438,7 +444,7 @@ function runMonthly(timeline, decide, opts = {}) {
       gross: +grossExposure.toFixed(4),
       nHold
     });
-    wHistory.push({ date: months[t], weights: { ...weights } });
+    wHistory.push({ date: months[t], weights: { ...weights }, signals: decisionSignals });
   }
 
   // Finalise diagnostics
@@ -605,6 +611,10 @@ function strategyPetr(opts = {}) {
 
     if (!ranked.length) return {};
 
+    // Record the signal value that earned each name a slot — the dashboard
+    // shows this as the "why" next to each weight.
+    for (const x of ranked) ctx.signals[x.tk] = { mom12_1: +x.m.toFixed(4) };
+
     // Sizing: vol-target (default) or equal-weight (1/N)
     const raw = {};
     let sumW = 0;
@@ -714,7 +724,10 @@ function strategyPetrSleeves(opts = {}) {
         .filter(x => x.m != null && isFinite(x.m) && x.m > 0)
         .sort((a, b) => b.m - a.m)
         .slice(0, N_per_sleeve);
-      for (const x of ranked) selected.push(x);
+      for (const x of ranked) {
+        selected.push(x);
+        ctx.signals[x.tk] = { mom12_1: +x.m.toFixed(4), sleeve: cls };
+      }
     }
     if (!selected.length) return {};
 
@@ -803,6 +816,9 @@ function strategyTSMOM(opts = {}) {
       raw[tk] = w;
       assumedGross += Math.abs(w) * sigma;
       n++;
+      // Record the TSMOM signal — the L-month return and its sign — so the
+      // dashboard can show "why" this name is in the basket.
+      ctx.signals[tk] = { mom12: +m.toFixed(4), sign };
     }
     if (n === 0) return {};
 
@@ -960,6 +976,15 @@ function strategyMultiSignal(opts = {}) {
       .filter(tk => ctx.eligibleTickers.includes(tk) && ema[tk] > 0)
       .sort((a, b) => ema[b] - ema[a])
       .slice(0, K);
+
+    // Record the composite score (smoothed) and the headline raw signals for
+    // each name that made the cut. The dashboard reads this for the "why".
+    for (const tk of ranked) {
+      ctx.signals[tk] = {
+        composite: +ema[tk].toFixed(4),
+        mom12_1: rawSig[tk].MOM12 != null && isFinite(rawSig[tk].MOM12) ? +rawSig[tk].MOM12.toFixed(4) : null
+      };
+    }
 
     if (!ranked.length) {
       // Trend the existing portfolio toward cash via partial turnover

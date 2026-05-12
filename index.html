@@ -251,6 +251,8 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .bt-w-row:last-child{border-bottom:none}
 .bt-w-tk{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ac);min-width:60px}
 .bt-w-nm{flex:1;color:var(--t2);font-size:10px}
+.bt-w-why{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--t3);min-width:140px;text-align:right;white-space:nowrap}
+.bt-w-why .pos{color:#065F46}.bt-w-why .neg{color:#991B1B}
 .bt-w-bar{width:140px;height:8px;background:var(--bd);border-radius:2px;overflow:hidden}
 .bt-w-bar-fill{height:100%;background:var(--ac)}
 .bt-w-bar-fill.neg{background:var(--rd)}
@@ -1188,6 +1190,36 @@ function btNextMonth(ym){
 function btHoldLabel(ym){ var nm=btNextMonth(ym); return BT_MONTH_NAMES[nm.m-1]+' '+nm.y; }
 function btDecisionDate(ym){ var p=ym.split('-'); var y=+p[0], m=+p[1]; var d=new Date(y,m,0).getDate(); return ym+'-'+(d<10?'0':'')+d; }
 
+// Build the "why" badge per holding from the signal object that backtest.js
+// wrote into weightHistory[i].signals[ticker]. Different strategies write
+// different fields; pick the most informative one available.
+//   - Petr family:   { mom12_1 } → "mom +52%"
+//   - Petr sleeves:  { mom12_1, sleeve } → "mom +52% · US Eq"
+//   - Multi:         { composite, mom12_1 } → "z +2.87 (mom +186%)"
+//   - TSMOM:         { mom12, sign } → "mom +18%" or "mom -46% (short)"
+function btWhyText(sig){
+  if(!sig) return '';
+  function pctSigned(x){ if(x==null||!isFinite(x)) return ''; var s=(x*100).toFixed(0); return (x>=0?'+':'')+s+'%'; }
+  function colour(x){ return x>0 ? 'pos' : (x<0 ? 'neg' : ''); }
+  if(sig.composite!=null){
+    var z=sig.composite, m=sig.mom12_1;
+    var zs=(z>=0?'+':'')+z.toFixed(2);
+    return '<span class="'+colour(z)+'">z '+zs+'</span>'+(m!=null?' <span style="color:var(--t3)">(mom '+pctSigned(m)+')</span>':'');
+  }
+  if(sig.mom12_1!=null){
+    var s=sig.mom12_1;
+    var base='<span class="'+colour(s)+'">mom '+pctSigned(s)+'</span>';
+    if(sig.sleeve) base += ' <span style="color:var(--t3)">· '+sig.sleeve.replace(' Equity','').replace('Thematic','Thm')+'</span>';
+    return base;
+  }
+  if(sig.mom12!=null){
+    var m12=sig.mom12;
+    var tag=sig.sign===-1 ? ' (short)' : '';
+    return '<span class="'+colour(m12)+'">mom '+pctSigned(m12)+'</span>'+(tag?' <span style="color:var(--t3)">'+tag+'</span>':'');
+  }
+  return '';
+}
+
 function renderBTWeights(){
   var host=document.getElementById("btWeights"), lblHost=document.getElementById("btWeightsLbl");
   var sel=document.getElementById("btSnapSel"), prev=document.getElementById("btSnapPrev"), next=document.getElementById("btSnapNext"), lat=document.getElementById("btSnapLatest");
@@ -1228,10 +1260,12 @@ function renderBTWeights(){
     html+='<div style="color:var(--t3);font-size:11px;padding:10px 0">All cash for '+holdLbl+' hold &mdash; regime gate is off (decided '+decDate+').</div>';
   } else {
     var maxAbs=Math.max.apply(null,entries.map(function(e){return Math.abs(e[1])}));
+    var sigs=snap.signals||{};
     entries.forEach(function(e){
       var tk=e[0], w=e[1], pct=(w*100).toFixed(1)+"%";
       var pctW=Math.abs(w)/maxAbs*100;
-      html += '<div class="bt-w-row"><span class="bt-w-tk">'+tk+'</span><span class="bt-w-nm">'+(nameByT[tk]||"")+'</span><div class="bt-w-bar"><div class="bt-w-bar-fill '+(w<0?"neg":"")+'" style="width:'+pctW+'%"></div></div><span class="bt-w-pct" style="color:'+(w<0?"var(--rd)":"var(--t1)")+'">'+pct+'</span></div>';
+      var why=btWhyText(sigs[tk]);
+      html += '<div class="bt-w-row"><span class="bt-w-tk">'+tk+'</span><span class="bt-w-nm">'+(nameByT[tk]||"")+'</span><span class="bt-w-why">'+why+'</span><div class="bt-w-bar"><div class="bt-w-bar-fill '+(w<0?"neg":"")+'" style="width:'+pctW+'%"></div></div><span class="bt-w-pct" style="color:'+(w<0?"var(--rd)":"var(--t1)")+'">'+pct+'</span></div>';
     });
   }
   host.innerHTML=html;
