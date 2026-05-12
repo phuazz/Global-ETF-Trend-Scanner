@@ -1174,6 +1174,20 @@ function renderBTHeatmap(){
   host.innerHTML=html;
 }
 
+// Snapshot date convention: snap.date is the DECISION month (last data used).
+// The strategy executes at close of the first trading day of the FOLLOWING
+// month and holds for one month. So the snapshot labelled "2026-04" is the
+// portfolio entered on the first trading day of May 2026 and held through
+// end of May. The helpers below render that explicitly in the UI so the
+// label can't be mistaken for "position held during April".
+var BT_MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function btNextMonth(ym){
+  var p=ym.split('-'); var y=+p[0], m=+p[1]+1; if(m>12){m=1;y+=1;}
+  return { y:y, m:m, ym: y+'-'+(m<10?'0':'')+m };
+}
+function btHoldLabel(ym){ var nm=btNextMonth(ym); return BT_MONTH_NAMES[nm.m-1]+' '+nm.y; }
+function btDecisionDate(ym){ var p=ym.split('-'); var y=+p[0], m=+p[1]; var d=new Date(y,m,0).getDate(); return ym+'-'+(d<10?'0':'')+d; }
+
 function renderBTWeights(){
   var host=document.getElementById("btWeights"), lblHost=document.getElementById("btWeightsLbl");
   var sel=document.getElementById("btSnapSel"), prev=document.getElementById("btSnapPrev"), next=document.getElementById("btSnapNext"), lat=document.getElementById("btSnapLatest");
@@ -1188,11 +1202,13 @@ function renderBTWeights(){
   if(!snaps||!snaps.length){host.innerHTML="";if(sel)sel.innerHTML="";return}
   lblHost.textContent=btName(k);
   // Build / refresh the dropdown when the strategy changes (or first render).
+  // Dropdown options use the HOLD month label so the user immediately sees
+  // "May 2026" for the latest snapshot rather than the decision month "2026-04".
   if(sel.dataset.k!==k){
     sel.innerHTML="";
     snaps.forEach(function(sn,i){
       var nHold=Object.values(sn.weights).filter(function(w){return Math.abs(w)>1e-6}).length;
-      var label=sn.date+"  ("+(nHold===0?"cash":nHold+" hold")+")";
+      var label=btHoldLabel(sn.date)+'  ('+(nHold===0?'cash':nHold+' hold')+')';
       var opt=document.createElement("option"); opt.value=String(i); opt.textContent=label;
       sel.appendChild(opt);
     });
@@ -1204,9 +1220,12 @@ function renderBTWeights(){
   var entries=Object.entries(snap.weights).sort(function(a,b){return Math.abs(b[1])-Math.abs(a[1])});
   var nameByT={}; (BT_DATA.universe||[]).forEach(function(u){nameByT[u.ticker]=u.name});
   var totalGross=entries.reduce(function(s,e){return s+Math.abs(e[1])},0);
-  var html='<div style="font-size:10px;color:var(--t3);margin-bottom:6px;display:flex;justify-content:space-between"><span>As of '+snap.date+' &middot; snapshot '+(idx+1)+' of '+snaps.length+'</span><span>Gross '+(totalGross*100).toFixed(0)+'%</span></div>';
+  var holdLbl=btHoldLabel(snap.date), decDate=btDecisionDate(snap.date);
+  var html='<div style="font-size:10px;color:var(--t3);margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+           '<span><strong style="color:var(--t1);font-weight:600">Hold period: '+holdLbl+'</strong> &middot; decided '+decDate+' &middot; fills at close of first trading day of '+holdLbl+' &middot; snapshot '+(idx+1)+' of '+snaps.length+'</span>'+
+           '<span>Gross '+(totalGross*100).toFixed(0)+'%</span></div>';
   if(!entries.length){
-    html+='<div style="color:var(--t3);font-size:11px;padding:10px 0">All cash at '+snap.date+' &mdash; regime gate is off.</div>';
+    html+='<div style="color:var(--t3);font-size:11px;padding:10px 0">All cash for '+holdLbl+' hold &mdash; regime gate is off (decided '+decDate+').</div>';
   } else {
     var maxAbs=Math.max.apply(null,entries.map(function(e){return Math.abs(e[1])}));
     entries.forEach(function(e){
