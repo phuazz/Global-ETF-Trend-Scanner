@@ -168,7 +168,24 @@ Petr is on individual stocks and explicitly says "size by volatility targeting" 
 
 Petr's literal spec is on individual stocks within a single asset class. Ranking equity ETFs against bond ETFs against gold on the same 12-1 momentum scale is apples-to-oranges — they have different risk-premia, different return autocorrelation profiles, and different macro drivers. The `petr_eq` variant restricts the eligible universe to US Equity + Intl Equity + EM Equity + Thematic (29 ETFs), keeping the mechanism identical but removing the cross-asset-class noise.
 
-Empirically, this delivered an in-sample (2016–2026) gross Sharpe of 0.51, vs 0.54 for the universe-wide Petr — essentially a wash. The attribution-layer test was more revealing: against the class-matched EW basket of 29 equity ETFs, the equity-only variant's residual Sharpe was 0.04 (universe-wide Petr managed 0.14 against the full-universe EW). The R² against the matched basket rose from 0.28 to 0.39 — the strategy is more correlated with its peer benchmark when the benchmark contains the same names. The implication is uncomfortable but clean: the apparent alpha of the universe-wide Petr in this window was coming from asset-class selection (equities outperformed bonds and commodities), not from within-class momentum skill. The matched benchmark exposes this. Next-step experiments — e.g. extending the sample to include 2000–02 / 2008–09, or running per-class momentum sleeves combined risk-parity-style — are deferred.
+Empirically, this delivered an in-sample (2016–2026) gross Sharpe of 0.51, vs 0.54 for the universe-wide Petr — essentially a wash. The attribution-layer test was more revealing: against the class-matched EW basket of 29 equity ETFs, the equity-only variant's residual Sharpe was 0.04 (universe-wide Petr managed 0.14 against the full-universe EW). The R² against the matched basket rose from 0.28 to 0.39 — the strategy is more correlated with its peer benchmark when the benchmark contains the same names. The implication is uncomfortable but clean: the apparent alpha of the universe-wide Petr in this window was coming from asset-class selection (equities outperformed bonds and commodities), not from within-class momentum skill. The matched benchmark exposes this.
+
+The long-sample monthly attribution (§10.6) materially changes the conclusion: against the same matched EW basket, `petr_eq`'s monthly residual Sharpe over 1994–2026 is **0.32** with an alpha t-stat of 1.77, well into the amber band and approaching statistical significance. The 2016–2026 daily window was simply too short and too one-sided to capture the regimes where the strategy adds value. The DD-attribution row (§10.7) reinforces this — over the long sample, `petr_eq` cuts max drawdown vs the equity EW basket by 47%.
+
+### 5.5 Per-class sleeves variant (`petr_sleeves`)
+
+`petr_eq` (§5.4) still ranks the 29 equity ETFs against each other in a single pool: country single-name ETFs (EWZ, EWG, EWY, …) compete on the same 12-1 momentum scale as US factor ETFs (VTV, VUG, MDY) and Thematic baskets (URA, SMH, COPX, BITQ). That is closer to Petr's spec than the universe-wide variant, but it is still mixing peer groups.
+
+`petr_sleeves` partitions the equity universe into four sleeves — US Equity, Intl Equity, EM Equity, Thematic — and runs the same Petr cross-sectional momentum **within each sleeve**, picking top-2 per class (default `NperSleeve`). Vol-targeting is applied per-holding at the standard 10% (§5.2); selections are stacked and de-levered to ≤100% gross with the same per-name cap and regime gate as base Petr. The hypothesis: ranking US large-cap against US small-cap is a tighter comparison than ranking EWZ against SMH, and the cleaner ranking should improve signal value.
+
+The empirical answer is "marginal":
+
+- **Vol**: 11.25% (sleeves) vs 13.09% (`petr_eq`) — meaningful reduction; per-class diversification works.
+- **Sharpe**: 0.58 vs 0.59 — essentially the same.
+- **Long-sample monthly residual Sharpe vs equity EW basket**: 0.30 vs 0.32 — same.
+- **Long-sample DD reduction vs equity EW**: 47.5% vs 46.8% — also same.
+
+The within-class restriction does not unlock additional signal alpha in this universe at this sample. It does deliver a cleaner construction (the holdings are more diversified across sleeves, which the vol drop reflects), and avoids the awkwardness of "the strategy is just picking the strongest equity class". For deployment one would prefer the sleeves variant on principle; for backtest evaluation the two are effectively interchangeable on the metrics we measure.
 
 ---
 
@@ -531,8 +548,10 @@ These are all reasonable next-step extensions. Document them; defer them.
 | 6 | Robustness battery (§11) | partial; full version deferred |
 | 7 | Benchmark-relative attribution (`fetch_benchmarks.js`, `attribution.py`, dashboard card) (§10) | done |
 | 8 | Equity-only variants (`petr_eq`, `multi_eq`) with class-matched EW basket in attribution (§5.4, §7.7, §10.2) | done |
-| 9 | Extend sample to include 2000–02 / 2008–09 with thinner pre-2010 universe (§5.4, §7.7) | follow-up |
-| 10 | Per-class momentum sleeves combined risk-parity-style (deferred per §5.4) | follow-up |
+| 9 | Long-sample monthly OLS attribution (§10.6) — extends regression window to 1994 via monthly returns | done |
+| 10 | Drawdown attribution row in attribution tables (§10.7) | done |
+| 11 | Per-class momentum sleeves variant `petr_sleeves` (§5.5) | done |
+| 12 | Risk-parity inter-sleeve weighting (currently sleeves are stacked with per-holding vol target) | follow-up |
 
 ---
 

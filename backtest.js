@@ -662,6 +662,100 @@ function strategyPetr(opts = {}) {
 }
 
 // ============================================================================
+// 5b. Strategy 1b — Petr per-class momentum sleeves
+//
+// Cross-sectional momentum the canonical-Petr way: rank stocks against their
+// peer group, not against everything. We split the eligible (equity) universe
+// into per-class sleeves (US Equity / Intl Equity / EM Equity / Thematic) and
+// pick top K_per_sleeve within each, vol-target each holding, then stack the
+// sleeves. The motivation is the §5.4 finding that pooled equity ranking
+// across all 22-29 equity ETFs delivered ~zero residual Sharpe — country
+// ETFs were getting ranked against US factor ETFs against Thematic baskets
+// on the same scale, which is still apples-to-oranges within "equity".
+//
+// Within-class ranking removes that noise: US large-cap vs US value vs US
+// growth is a tighter comparison than EWZ vs SMH vs URA.
+// ============================================================================
+
+function strategyPetrSleeves(opts = {}) {
+  const N_per_sleeve = opts.NperSleeve || 2;
+  const volTarget = opts.volTarget || 0.10;
+  const cap = opts.cap || 0.30;
+  const regimeTicker = opts.regimeTicker || 'SPY';
+  const regimeSMA = opts.regimeSMA || 10;
+  const regimeMode = opts.regimeMode || 'binary';
+  const regimeScale = opts.regimeScale || 0.05;
+  // opts.classByTicker is required to group eligible tickers by class.
+
+  return function decide(t, ctx) {
+    // Same regime filter as Petr — SPY vs its 10-month SMA.
+    const spy = ctx.prices[regimeTicker];
+    if (!spy) return {};
+    const sma = trailingSMA(spy, t + 1, regimeSMA);
+    const spyNow = spy[t];
+    if (sma == null || spyNow == null) return {};
+    const factor = regimeFactor(spyNow, sma, regimeMode, regimeScale);
+    if (factor <= 0) return {};
+
+    // Group eligible tickers by class.
+    const classBy = opts.classByTicker || {};
+    const byClass = {};
+    for (const tk of ctx.eligibleTickers) {
+      const cls = classBy[tk];
+      if (!cls) continue;
+      (byClass[cls] = byClass[cls] || []).push(tk);
+    }
+
+    // Within each class, rank by 12-1 momentum, take top N_per_sleeve positives.
+    const selected = [];
+    for (const cls of Object.keys(byClass)) {
+      const ranked = byClass[cls]
+        .map(tk => ({ tk, m: ctx.mom12_1(tk) }))
+        .filter(x => x.m != null && isFinite(x.m) && x.m > 0)
+        .sort((a, b) => b.m - a.m)
+        .slice(0, N_per_sleeve);
+      for (const x of ranked) selected.push(x);
+    }
+    if (!selected.length) return {};
+
+    // Vol-target each selection (same convention as Petr).
+    const raw = {};
+    let sumW = 0;
+    for (const { tk } of selected) {
+      const sigma = ctx.vol(tk, 60);
+      if (sigma == null || sigma <= 0) continue;
+      const w = volTarget / sigma;
+      raw[tk] = w;
+      sumW += w;
+    }
+    if (sumW === 0) return {};
+
+    // De-lever to <=1.0 gross.
+    const scale = sumW > 1 ? 1 / sumW : 1;
+    let weights = {};
+    for (const tk of Object.keys(raw)) weights[tk] = raw[tk] * scale;
+
+    // Per-name cap with iterative redistribution to free names.
+    for (let iter = 0; iter < 4; iter++) {
+      let excess = 0; const free = [];
+      for (const tk of Object.keys(weights)) {
+        if (weights[tk] >= cap - 1e-9) { excess += weights[tk] - cap; weights[tk] = cap; }
+        else free.push(tk);
+      }
+      if (excess <= 1e-9 || !free.length) break;
+      const freeSum = free.reduce((s, tk) => s + weights[tk], 0);
+      if (freeSum <= 0) break;
+      for (const tk of free) weights[tk] += excess * (weights[tk] / freeSum);
+    }
+
+    if (factor < 1) {
+      for (const tk of Object.keys(weights)) weights[tk] *= factor;
+    }
+    return weights;
+  };
+}
+
+// ============================================================================
 // 6. Strategy 2 — AQR-style TSMOM
 // ============================================================================
 
@@ -1057,6 +1151,8 @@ function main() {
     petr:           { name: 'Petr Rotational Momentum',       run: strategyPetr(regimeOpts),                      targetN: 5  },
     petr_eq:        { name: 'Petr Rotational Momentum (equity-only)',
                        run: strategyPetr(regimeOpts),                                                              targetN: 5,  equityOnly: true },
+    petr_sleeves:   { name: 'Petr per-class sleeves (equity)',
+                       run: strategyPetrSleeves({ classByTicker, ...regimeOpts }),                                 targetN: 8,  equityOnly: true },
     tsmom:          { name: 'TSMOM (40% vol cap, conservative)',
                        run: strategyTSMOM({ classByTicker, aqrLeverage: false }),                                  targetN: 10 },
     tsmom_aqr:      { name: 'TSMOM (40% vol target, AQR-leveraged)',
