@@ -287,6 +287,15 @@ function trailingSMA(prices, t, n) {
 // previous weights.
 // ============================================================================
 
+// Equity-only universe filter — keep only ETFs whose asset class is in the
+// equity family (US/Intl/EM Equity + Thematic, which are all equity-based).
+// Excludes Fixed Income, Commodity, Real Estate (REITs are equity-like but
+// we keep this conservative), Currency, Alternatives. This brings the
+// cross-sectional strategies closer to Petr's literal stock-version spirit
+// on a liquid-ETF proxy basis, and removes the apples-to-oranges noise of
+// ranking equity ETFs against bond/commodity ETFs on the same momentum scale.
+const EQUITY_CLASSES = new Set(['US Equity', 'Intl Equity', 'EM Equity', 'Thematic']);
+
 function runMonthly(timeline, decide, opts = {}) {
   const { months, prices, monthlyDate, daily, firstDayClose } = timeline;
   const costBps = opts.costBps != null ? opts.costBps : 5;       // 5 bps each side
@@ -329,13 +338,6 @@ function runMonthly(timeline, decide, opts = {}) {
 
     const decisionDate = lastDayOfMonth(months[t] + '-01');
 
-    // Equity-only universe filter — keep only ETFs whose asset class is in the
-    // equity family (US/Intl/EM Equity + Thematic, which are all equity-based).
-    // Excludes Fixed Income, Commodity, Real Estate (REITs are equity-like but
-    // we keep this conservative), Currency, Alternatives. This brings the
-    // strategy closer to Petr's literal stock-version spirit on a liquid-ETF
-    // proxy basis.
-    const EQUITY_CLASSES = new Set(['US Equity', 'Intl Equity', 'EM Equity', 'Thematic']);
     const ctx = {
       t, date: months[t], decisionDate,
       eligibleTickers: Object.keys(prices).filter(tk => {
@@ -1045,13 +1047,23 @@ function main() {
   if (REGIME_SCALE) regimeOpts.regimeScale = parseFloat(REGIME_SCALE);
   if (WEIGHTING)    regimeOpts.weighting   = WEIGHTING;
 
+  // Strategy variants. Equity-only variants restrict the eligible universe to
+  // US/Intl/EM Equity + Thematic — same momentum mechanism, narrower pool.
+  // Driven by the attribution-layer finding that universe-wide cross-sectional
+  // strategies showed near-zero residual Sharpe vs an EW basket of the full
+  // universe; the hypothesis is that the noise of cross-asset-class ranking
+  // (equity vs bond vs gold on the same 12-1 momentum scale) was dilutive.
   const strategies = {
     petr:           { name: 'Petr Rotational Momentum',       run: strategyPetr(regimeOpts),                      targetN: 5  },
+    petr_eq:        { name: 'Petr Rotational Momentum (equity-only)',
+                       run: strategyPetr(regimeOpts),                                                              targetN: 5,  equityOnly: true },
     tsmom:          { name: 'TSMOM (40% vol cap, conservative)',
                        run: strategyTSMOM({ classByTicker, aqrLeverage: false }),                                  targetN: 10 },
     tsmom_aqr:      { name: 'TSMOM (40% vol target, AQR-leveraged)',
                        run: strategyTSMOM({ classByTicker, aqrLeverage: true }),                                   targetN: 10 },
-    multi:          { name: 'Multi-signal composite',         run: strategyMultiSignal(regimeOpts),               targetN: 8  }
+    multi:          { name: 'Multi-signal composite',         run: strategyMultiSignal(regimeOpts),               targetN: 8  },
+    multi_eq:       { name: 'Multi-signal composite (equity-only)',
+                       run: strategyMultiSignal(regimeOpts),                                                       targetN: 8,  equityOnly: true }
   };
 
   // Per-class default costs in bps (one-way). Tuned to typical retail spreads:
@@ -1082,6 +1094,7 @@ function main() {
     if (ONLY_STRATEGY && ONLY_STRATEGY !== key) continue;
     console.log(`\nRunning strategy: ${strategies[key].name}`);
     const stratOpts = { ...runOpts, targetN: strategies[key].targetN };
+    if (strategies[key].equityOnly) stratOpts.equityOnly = true;
     const { equity, wHistory, diag } = runMonthly(timeline, strategies[key].run, stratOpts);
     const stats = computeStats(equity);
     if (!stats) { console.warn(`  no equity produced for ${key}`); continue; }
@@ -1095,6 +1108,10 @@ function main() {
     }
     out.strategies[key] = {
       name: strategies[key].name,
+      // Universe filter recorded so attribution.py can build a class-matched
+      // EW basket (the fair benchmark for a restricted strategy). null =
+      // full universe.
+      universeFilter: strategies[key].equityOnly ? { classes: Array.from(EQUITY_CLASSES) } : null,
       stats,
       diag,
       equity,

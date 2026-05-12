@@ -816,7 +816,10 @@ function renderBTAttribution(){
   function num(x,d){if(x==null||!isFinite(x))return"\u2014";d=d==null?2:d;return (+x).toFixed(d)}
   var g=a.gross||{}, ew=a.vsEW||{}, ac=a.vsACWI||{};
   var benchLbl = a.benchmarkTicker ? a.benchmarkTicker : "ACWI";
-  var ewLbl = "EW basket ("+(meta.ewUniverseSize||"")+")";
+  // Use per-strategy basket size when present (equity-only variants regress
+  // against a 22-ETF equity basket, not the 56-ETF universe basket).
+  var ewSize = (a.ewUniverseSize != null) ? a.ewUniverseSize : meta.ewUniverseSize;
+  var ewLbl = "EW basket ("+(ewSize||"")+")";
   var html = "<div class=\"bt-chart-card\">"+
     "<div class=\"bt-chart-h\">Benchmark-relative attribution &mdash; <span style=\"color:var(--t3);text-transform:none;letter-spacing:0;font-weight:400\">"+btName(k)+", daily OLS over "+(g.start||"")+" \u2192 "+(g.end||"")+" ("+(g.n_days||"?")+" days)</span></div>"+
     "<div style=\"padding:14px 18px\">"+

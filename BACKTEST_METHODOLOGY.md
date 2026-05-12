@@ -164,6 +164,12 @@ Hard-cap any single `w_i` at 0.30. Redistribute excess proportionally.
 
 Petr is on individual stocks and explicitly says "size by volatility targeting" without caps. With ETFs we're already diversified inside each holding, so the realised vols are lower, which would mechanically push weights to the cap. The 30% cap is to prevent the portfolio from becoming "100% TLT" during bond-bull years — a degenerate outcome.
 
+### 5.4 Equity-only variant (`petr_eq`)
+
+Petr's literal spec is on individual stocks within a single asset class. Ranking equity ETFs against bond ETFs against gold on the same 12-1 momentum scale is apples-to-oranges — they have different risk-premia, different return autocorrelation profiles, and different macro drivers. The `petr_eq` variant restricts the eligible universe to US Equity + Intl Equity + EM Equity + Thematic (29 ETFs), keeping the mechanism identical but removing the cross-asset-class noise.
+
+Empirically, this delivered an in-sample (2016–2026) gross Sharpe of 0.51, vs 0.54 for the universe-wide Petr — essentially a wash. The attribution-layer test was more revealing: against the class-matched EW basket of 29 equity ETFs, the equity-only variant's residual Sharpe was 0.04 (universe-wide Petr managed 0.14 against the full-universe EW). The R² against the matched basket rose from 0.28 to 0.39 — the strategy is more correlated with its peer benchmark when the benchmark contains the same names. The implication is uncomfortable but clean: the apparent alpha of the universe-wide Petr in this window was coming from asset-class selection (equities outperformed bonds and commodities), not from within-class momentum skill. The matched benchmark exposes this. Next-step experiments — e.g. extending the sample to include 2000–02 / 2008–09, or running per-class momentum sleeves combined risk-parity-style — are deferred.
+
 ---
 
 ## 6. Strategy 2 — AQR-style time-series momentum (TSMOM) with 40% vol target
@@ -323,6 +329,12 @@ w_i,t = (1 − τ) × w_i,t-1 + τ × target_i,t
 
 Default `τ = 0.5` ⇒ ~2-month half-life of the actual portfolio. Costs roughly halve, and the strategy tolerates noisy month-to-month signal flips. Robustness: test τ ∈ {0.25, 0.33, 0.5, 0.66, 1.0}.
 
+### 7.7 Equity-only variant (`multi_eq`)
+
+The same within-asset-class restriction applied to Petr (§5.4) is also applied to the multi-signal composite. The universe is narrowed to US/Intl/EM Equity + Thematic (29 ETFs); signals, weights, and regime conditioning are unchanged.
+
+The empirical result is the same direction as `petr_eq` but more stark: gross Sharpe of 0.67 (vs 0.72 for the universe-wide composite), and a residual Sharpe of **−0.12** against the class-matched EW basket. The R² rises to 0.88 — the equity-only composite is essentially a higher-correlation, slightly worse version of buying the equity EW basket. The universe-wide composite's headline 0.19 residual Sharpe vs the full-universe EW was, on this evidence, mostly asset-class allocation rather than signal skill. As with Petr, this is a clean negative result, not a fatal one — the regime filter still cuts drawdown, and the 2016–2026 sample is a cherry-picked period for buy-everything-and-hold strategies. See §11/§12 for the deferred next-step experiments.
+
 ---
 
 ## 8. Transaction cost model
@@ -389,7 +401,9 @@ Residual Sharpe — annualised alpha divided by annualised residual stdev — is
 
 We regress each strategy against two benchmarks because each answers a different question.
 
-**Equal-weighted basket of the full universe.** Built in `attribution.py::ew_basket_returns` as the cross-sectional mean of all daily universe returns, with absent tickers excluded from each day's mean (equivalent to a daily 1/N rebalance over the eligible set). This is the *stricter* test, because the EW basket is constructed from the same names the strategy trades. If the strategy is just a noisier version of "buy everything in the universe", its alpha against EW will be near zero. The decision flag uses this column.
+**Equal-weighted basket, class-matched to the strategy's eligible universe.** Built in `attribution.py::filtered_ew` as the cross-sectional mean of daily returns over the ETFs whose class is in the strategy's `universeFilter` (or the full universe if the strategy has no filter). For unrestricted strategies (Petr, TSMOM, the multi-signal composite) this is the 56-ETF universe basket; for equity-only variants (§5.4, §7.7) it is the 29-ETF equity basket. This is the *stricter* test, because the EW basket is constructed from the same names the strategy is allowed to trade. If the strategy is just a noisier version of "buy everything in your universe", its alpha against EW will be near zero. The decision flag uses this column.
+
+The class-matched construction is critical for restricted strategies. A universe-wide EW basket includes assets the restricted strategy is forbidden from holding (bonds, commodities), so a high "alpha vs universe EW" for an equity-only strategy would mostly reflect asset-class allocation rather than signal skill. The matched basket isolates the signal value. Concretely: the universe-wide Petr's 0.14 residual Sharpe against the 56-ETF EW basket collapsed to 0.04 for `petr_eq` against the 29-ETF equity EW, because the matched test no longer rewards "I happened to hold equities while bonds were flat".
 
 **ACWI as a single-ETF proxy** (with URTH then VT as fallbacks; whichever loads first wins). This is what an investor would actually consider as the alternative — buy one ETF, go home. It is a *looser* test because ACWI is global equity only and our universe spans bonds, commodities, and currencies. A strategy can post a strong alpha against ACWI simply by holding TLT through a bond bull market, which is not signal value. We report it because it is the benchmark the investor will compare against in practice.
 
@@ -488,6 +502,9 @@ These are all reasonable next-step extensions. Document them; defer them.
 | 5 | GitHub Actions workflow refresh — run history fetch weekly, backtest on demand | follow-up |
 | 6 | Robustness battery (§11) | partial; full version deferred |
 | 7 | Benchmark-relative attribution (`fetch_benchmarks.js`, `attribution.py`, dashboard card) (§10) | done |
+| 8 | Equity-only variants (`petr_eq`, `multi_eq`) with class-matched EW basket in attribution (§5.4, §7.7, §10.2) | done |
+| 9 | Extend sample to include 2000–02 / 2008–09 with thinner pre-2010 universe (§5.4, §7.7) | follow-up |
+| 10 | Per-class momentum sleeves combined risk-parity-style (deferred per §5.4) | follow-up |
 
 ---
 

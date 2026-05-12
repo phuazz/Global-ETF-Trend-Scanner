@@ -99,6 +99,26 @@ def ew_basket_returns(universe_prices):
     return rets.mean(axis=1, skipna=True)
 
 
+def class_by_ticker(results):
+    """Build {ticker: class} from backtest_results.json's `universe` field."""
+    return {u["ticker"]: u["cls"] for u in results.get("universe", [])}
+
+
+def filtered_ew(universe_prices, classes_map, allowed_classes):
+    """EW basket restricted to ETFs whose class is in `allowed_classes`.
+
+    Returns (series, n_tickers, ticker_list). The ticker_list is the set of
+    universe tickers in scope for this restricted basket — useful for the
+    dashboard to label what the strategy was compared against.
+    """
+    allowed = set(allowed_classes)
+    keep = {tk: ac for tk, ac in universe_prices.items()
+            if classes_map.get(tk) in allowed}
+    if not keep:
+        return None, 0, []
+    return ew_basket_returns(keep), len(keep), sorted(keep.keys())
+
+
 def benchmark_etf_returns(ac):
     return ac.pct_change()
 
@@ -221,6 +241,24 @@ def main():
     with open(RESULTS_PATH) as f:
         results = json.load(f)
 
+    classes_map = class_by_ticker(results)
+
+    # Cache restricted EW baskets so we don't rebuild for each strategy in a
+    # variant family. Key: tuple(sorted(allowed_classes)) or None for full.
+    ew_cache = {None: (ew_ret, len(universe_prices), sorted(universe_prices.keys()))}
+
+    def get_ew(universe_filter):
+        """Return (basket_series, n_tickers, ticker_list, label) for a filter."""
+        if not universe_filter:
+            s, n, tks = ew_cache[None]
+            return s, n, tks, "EW basket (full universe)"
+        classes = tuple(sorted(universe_filter.get("classes", [])))
+        if classes not in ew_cache:
+            s, n, tks = filtered_ew(universe_prices, classes_map, classes)
+            ew_cache[classes] = (s, n, tks)
+        s, n, tks = ew_cache[classes]
+        return s, n, tks, f"EW basket ({', '.join(classes)})"
+
     attribution = {}
     for sname, strat in results["strategies"].items():
         sr = daily_returns_series(strat)
@@ -231,11 +269,26 @@ def main():
         print(f"  Daily strategy returns: {len(sr)} days "
               f"({sr.index[0].date()} -> {sr.index[-1].date()})")
 
+        # Class-matched EW basket — fair benchmark for a restricted strategy.
+        # A universe-wide EW basket includes assets the strategy is forbidden
+        # from holding (bonds, commodities, etc.), so alpha against it would
+        # conflate signal value with asset-class allocation. The matched basket
+        # isolates the signal value.
+        uf = strat.get("universeFilter")
+        strat_ew, ew_n, ew_tks, ew_label = get_ew(uf)
+        if strat_ew is None:
+            print(f"  {sname}: filtered EW basket is empty — falling back to full universe")
+            strat_ew, ew_n, ew_tks, ew_label = get_ew(None)
+        if uf:
+            print(f"  Universe restricted to classes: {uf.get('classes')} -> {ew_n} ETFs")
+        else:
+            print(f"  Universe: full ({ew_n} ETFs)")
+
         # Confine all series to the strategy's date range so the regression
         # window is consistent.
         common_start = sr.index[0]
         common_end = sr.index[-1]
-        ew_w = ew_ret.loc[common_start:common_end]
+        ew_w = strat_ew.loc[common_start:common_end]
         bench_w = bench_ret.loc[common_start:common_end] if bench_ret is not None else None
 
         gross = gross_daily_stats(sr)
@@ -247,6 +300,8 @@ def main():
             "gross": gross,
             "vsEW": ew_stats,
             "vsACWI": acwi_stats,
+            "ewLabel": ew_label,
+            "ewUniverseSize": ew_n,
             "benchmarkTicker": bench_tk if bench_tk else None,
             "benchmarkNote": (
                 f"Single-ETF proxy: {bench_tk}"
