@@ -12,3 +12,6 @@ history.real_backup/
 node_modules/
 .DS_Store
 *.log
+
+# Claude Code worktree + per-session preview launch configs
+.claude/
