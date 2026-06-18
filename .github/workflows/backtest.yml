@@ -27,13 +27,20 @@ jobs:
       - name: Run backtest with production-default flags
         run: node backtest.js --startMonth=2005-01 --regimeMode=graduated --regimeScale=0.05 --weighting=equal --equityOnly
 
-      - name: Commit backtest_results.json
+      - name: Event study
+        # Runs against the fresh in-runner history from the fetch step above
+        # (which is not committed), so events_results.json stays in step with
+        # the latest history even though history/ itself is regenerated, not stored.
+        run: node events.js
+
+      - name: Commit backtest + event results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add backtest_results.json
+          git add backtest_results.json events_results.json
           # Only commit if results actually changed
-          git diff --staged --quiet || git commit -m "Weekly backtest refresh $(date -u +%Y-%m-%d)"
+          git diff --staged --quiet || git commit -m "Weekly backtest & event refresh $(date -u +%Y-%m-%d)"
+          git pull --rebase --autostash origin main
           git push
 
       # The history/ folder is large and regenerable — never commit it.

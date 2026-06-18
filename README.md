@@ -76,7 +76,7 @@ Each card also splits episodes by the SPY-200d-SMA regime and reports median fav
 
 Hosted via GitHub Pages at: <https://phuazz.github.io/Global-ETF-Trend-Scanner/>
 
-The dashboard auto-loads the latest committed JSON from the repo. Two GitHub Actions keep it fresh: a **daily** job ([`refresh.yml`](.github/workflows/refresh.yml)) runs `fetch_data.js` + `events_live.js` (scanner snapshot + live-event flags), and a **weekly** job ([`weekly.yml`](.github/workflows/weekly.yml)) runs `fetch_history.js` → `fetch_benchmarks.js` → `backtest.js` → `attribution.py` → `events.js` (full history, backtest, attribution, and event study).
+The dashboard auto-loads the latest committed JSON from the repo. Two GitHub Actions keep it fresh: a **daily** job ([`refresh.yml`](.github/workflows/refresh.yml)) runs `fetch_data.js` + `events_live.js` (scanner snapshot + live-event flags), and a **weekly** job ([`backtest.yml`](.github/workflows/backtest.yml), Mondays) runs `fetch_history.js` → `backtest.js` → `events.js` (full history, backtest, and event study). The weekly job regenerates `history/` in-runner but does not commit it (it is large and regenerable). Benchmark-relative attribution (`fetch_benchmarks.js` + `attribution.py`) is **not** in CI — run it manually when you want the attribution card populated.
 
 ## License
 

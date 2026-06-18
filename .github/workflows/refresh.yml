@@ -27,7 +27,7 @@ jobs:
       - name: Live event scan
         # Lightweight daily scan: fetches a 2y window, checks whether any
         # pre-registered event is firing now, writes events_live.json for the
-        # Market Pulse strip. The full event study runs weekly (weekly.yml).
+        # Market Pulse strip. The full event study runs weekly (backtest.yml).
         run: node events_live.js
         continue-on-error: true
 
