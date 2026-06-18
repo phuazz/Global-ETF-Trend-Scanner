@@ -1,0 +1,27 @@
+{
+ "generatedAt": "2026-06-18T02:42:04.307Z",
+ "asOf": "2026-06-17",
+ "lookbackSessions": 10,
+ "events": [
+  {
+   "id": "spy-rsi-ob-to-mid-3d",
+   "name": "SPY RSI: overbought to sub-50 in 3 days",
+   "target": "SPY",
+   "status": "ACTIVE",
+   "detail": "Triggered 8 session(s) ago (2026-06-05). Current RSI 50.8.",
+   "current": 50.8,
+   "currentLabel": "RSI",
+   "lastTrigger": "2026-06-05"
+  },
+  {
+   "id": "xasset-breadth-cross-below-50",
+   "name": "Cross-asset breadth crosses below 50% above 200d SMA",
+   "target": "SPY",
+   "status": "QUIET",
+   "detail": "75% above 200d SMA. Last cross below 50%: none in 2y.",
+   "current": 75,
+   "currentLabel": "% > 200d SMA",
+   "lastTrigger": null
+  }
+ ]
+}

@@ -24,11 +24,19 @@ jobs:
       - name: Fetch ETF data
         run: node fetch_data.js
 
-      - name: Commit and push data.json
+      - name: Live event scan
+        # Lightweight daily scan: fetches a 2y window, checks whether any
+        # pre-registered event is firing now, writes events_live.json for the
+        # Market Pulse strip. The full event study runs weekly (weekly.yml).
+        run: node events_live.js
+        continue-on-error: true
+
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json
-          # Only commit if data.json actually changed
+          git add data.json events_live.json
+          # Only commit if something actually changed
           git diff --staged --quiet || git commit -m "Daily ETF data refresh $(date -u +%Y-%m-%d)"
+          git pull --rebase --autostash origin main
           git push
