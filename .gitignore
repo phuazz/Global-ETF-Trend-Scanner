@@ -8,6 +8,18 @@ history.real_backup/
 # either commit them or use `git checkout -- backtest_results.json` to
 # revert to the CI-generated version before pushing.
 
+# ---------------------------------------------------------------------------
+# PRIVATE RESEARCH STORE — email-derived content (SentimenTrader, The Market
+# Ear, SemiAnalysis). This is PAID, LICENSED THIRD-PARTY IP ("do not
+# distribute / all rights reserved"). This repo is published to GitHub Pages
+# (a PUBLIC site). NOTHING under private/ may EVER be committed here.
+# Defence in depth: the folder is gitignored AND carries its own README/guard.
+# If you need to share an event with the public catalogue, port ONLY the
+# mechanical definition + your own written rationale — never their text or
+# their printed numbers.
+private/
+# ---------------------------------------------------------------------------
+
 # Node / OS
 node_modules/
 .DS_Store
