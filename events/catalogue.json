@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-06-18",
+  "_doc": "Pre-registered event library. Every event MUST carry a written `rationale` (the economic mechanism) before it is admitted — events.js refuses to run an event without one. This is the antidote to fishing: the hypothesis is recorded before the result is seen. `universe` is the full 56-ETF cross-asset set used by breadth events (equities, fixed income, commodities, real estate, currencies, alternatives, thematics).",
+  "universe": [
+    "SPY", "QQQ", "IWM", "DIA", "VTV", "VUG", "MDY",
+    "EFA", "VGK", "EWJ", "EWU", "EWG", "EWA", "EWC",
+    "EEM", "FXI", "EWZ", "INDA", "EWT", "EWY", "THD", "EWS",
+    "TLT", "IEF", "LQD", "HYG", "EMB", "TIP", "BND",
+    "GLD", "SLV", "USO", "DBA", "DBB", "UNG", "PDBC",
+    "VNQ", "VNQI", "IYR",
+    "UUP", "FXE", "FXY", "FXB", "FXA",
+    "KMLM", "DBMF", "BTAL", "GCC", "GMOM",
+    "SHLD", "URA", "PAVE", "SMH", "COPX", "HACK", "BITQ"
+  ],
+  "events": [
+    {
+      "id": "spy-rsi-ob-to-mid-3d",
+      "name": "SPY RSI: overbought to sub-50 in 3 days",
+      "kind": "rsi_ob_to_mid",
+      "target": "SPY",
+      "rsiPeriod": 14,
+      "window": 3,
+      "clusterDays": 10,
+      "rationale": "A fast collapse from overbought (RSI > 70) to sub-50 within three sessions marks an abrupt loss of momentum without a full trend break. The published SentimentTrader/DailyChartbook version reads it as a short-term washout that historically preceded a bounce. We replicate it on SPY to validate the engine against a known study, knowing our 10-year daily window gives a thin sample.",
+      "definition": "Trigger on the session RSI(14) crosses below 50, provided RSI exceeded 70 within the prior 3 sessions."
+    },
+    {
+      "id": "xasset-breadth-cross-below-50",
+      "name": "Cross-asset breadth crosses below 50% above 200d SMA",
+      "kind": "breadth_cross",
+      "target": "SPY",
+      "level": 0.5,
+      "minNames": 30,
+      "clusterDays": 21,
+      "rationale": "Cross-sectional participation across the whole 56-ETF cross-asset book, not an index level. When fewer than half of all assets — equities, bonds, commodities, real estate, currencies, alternatives — are above their own 200-day SMA, trends are failing broadly and there are few places to hide, even if cap-weighted SPY has not broken. This is a breadth construct a single-index desk cannot build, and it maps onto the same 200d-SMA regime gate the backtest already trusts. Forward returns are measured on SPY.",
+      "definition": "Trigger on the session the share of the 56-ETF cross-asset universe trading above its own 200-day SMA crosses below 50% (minimum 30 eligible names)."
+    }
+  ]
+}

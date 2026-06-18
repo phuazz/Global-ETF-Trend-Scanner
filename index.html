@@ -220,6 +220,13 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .bt-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:900px){.bt-charts{grid-template-columns:1fr}}
 .bt-chart-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.ev-tbl{width:100%;border-collapse:collapse;font-size:11.5px;font-family:'JetBrains Mono',monospace}
+.ev-tbl th{text-align:right;padding:8px 12px;color:var(--t3);font-weight:600;border-bottom:1px solid var(--bd);white-space:nowrap;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.ev-tbl th:first-child,.ev-tbl td:first-child{text-align:left}
+.ev-tbl td{text-align:right;padding:7px 12px;border-bottom:1px solid var(--bd);color:var(--t1);white-space:nowrap}
+.ev-tbl td.label{color:var(--t1);font-weight:600}
+.ev-tbl td.dim{color:var(--t3)}
+.ev-tbl tbody tr:hover{background:var(--sa)}
 .bt-chart-h{padding:10px 14px;border-bottom:1px solid var(--bd);font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between}
 .bt-chart-body{height:280px;position:relative}
 .bt-chart-body svg{width:100%;height:100%;display:block}
@@ -289,6 +296,7 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 <button class="tab-btn" data-tab="tab-performance" onclick="switchTab(this)"><span class="tab-icon ti-perf">%</span><span class="tab-lbl"> Performance</span><span class="tab-lbl-short">Perf</span></button>
 <button class="tab-btn" data-tab="tab-signals" onclick="switchTab(this)"><span class="tab-icon ti-signals">&#10003;</span><span class="tab-lbl"> Signal Matrix</span><span class="tab-lbl-short">Signals</span></button>
 <button class="tab-btn" data-tab="tab-backtest" onclick="switchTab(this)"><span class="tab-icon ti-bt">&#931;</span><span class="tab-lbl"> Backtest</span><span class="tab-lbl-short">Bktst</span></button>
+<button class="tab-btn" data-tab="tab-events" onclick="switchTab(this)"><span class="tab-icon ti-bt">&#9889;</span><span class="tab-lbl"> Event Studies</span><span class="tab-lbl-short">Events</span></button>
 </div>
 
 <!-- TAB: Market Pulse -->
@@ -384,6 +392,24 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 <div id="btAttribution" style="margin-top:14px"></div>
 <div class="bt-chart-card" style="margin-top:14px"><div class="bt-chart-h">Monthly returns &mdash; <span id="btHeatLbl"></span></div><div class="bt-chart-body" id="btHeatmap" style="height:auto"></div></div>
 <div class="bt-chart-card" style="margin-top:14px"><div class="bt-chart-h"><span>Target portfolio &mdash; <span id="btWeightsLbl"></span></span><span class="bt-snap-controls"><button class="bt-snap-btn" id="btSnapPrev" title="Previous snapshot">&#8249;</button><select id="btSnapSel" class="bt-snap-sel"></select><button class="bt-snap-btn" id="btSnapNext" title="Next snapshot">&#8250;</button><button class="bt-snap-btn" id="btSnapLatest" title="Jump to latest" style="margin-left:6px">latest</button></span></div><div class="bt-chart-body" id="btWeights" style="height:auto;padding:10px 14px"></div></div>
+</div>
+</div>
+
+<!-- TAB: Event Studies -->
+<div class="tab-panel" id="tab-events">
+<div id="evMissing" style="display:none;background:var(--ab);border:1px solid #FCD34D;border-radius:var(--r);padding:18px 22px;font-size:12px;color:var(--t2);line-height:1.7"></div>
+<div id="evContent" style="display:none">
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 18px;margin-bottom:14px;font-size:12px;color:var(--t2);line-height:1.7">
+<strong style="color:var(--t1)">Event scenario analysis (SentimentTrader-style).</strong> For each <em>pre-registered</em> event we find every historical trigger, collapse clustered triggers into independent <strong>episodes</strong>, and compare the forward-return distribution against the unconditional baseline. The edge is the gap to baseline, not the level. Significance is a random-entry Monte Carlo that preserves the overlap structure; max adverse excursion (MAE) shows the worst path, not just the endpoint. <span style="color:var(--t3)">Forward returns measured from the close of the trigger day. P-values are not corrected for multiple testing.</span> <span id="evMeta" style="color:var(--t3)"></span>
+</div>
+<div class="bt-pills" id="evPills"></div>
+<div id="evHeader"></div>
+<div id="evFlags"></div>
+<div class="bt-chart-card" style="margin-top:14px"><div class="bt-chart-h">Forward returns &mdash; <span style="color:var(--t3);text-transform:none;letter-spacing:0;font-weight:400">conditional median (solid) vs unconditional baseline (hollow), by horizon</span></div><div class="bt-chart-body" id="evFwdChart" style="height:auto"></div></div>
+<div id="evTable" style="margin-top:14px"></div>
+<div class="bt-chart-card" style="margin-top:14px"><div class="bt-chart-h">Signal map &mdash; <span id="evMapLbl" style="color:var(--t3);text-transform:none;letter-spacing:0;font-weight:400"></span></div><div class="bt-chart-body" id="evMap" style="height:auto"></div></div>
+<div id="evEpisodes" style="margin-top:14px"></div>
+</div>
 </div>
 </div>
 </div>
@@ -547,7 +573,7 @@ document.getElementById("loadMsg").innerHTML='<div class="err">Failed to load da
 }
 }
 
-function renderAll(){rPulse();rSum();rScan();rPerf();rAlign();rAction();rTrades();rExits();updateTabCounts();initBacktest()}
+function renderAll(){rPulse();rSum();rScan();rPerf();rAlign();rAction();rTrades();rExits();updateTabCounts();initBacktest();initEvents()}
 
 function switchTab(btn){
 document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active")});
@@ -1275,6 +1301,164 @@ function renderBTWeights(){
   next.onclick=function(){ var i=parseInt(sel.value,10); if(i<snaps.length-1){sel.value=String(i+1); renderBTWeights();} };
   lat.onclick =function(){ sel.value=String(snaps.length-1); renderBTWeights(); };
   sel.onchange=function(){ renderBTWeights(); };
+}
+
+// =====================================================================
+// Event Studies tab
+// =====================================================================
+var EV_DATA=null, EV_SEL=0;
+
+async function initEvents(){
+  var box=document.getElementById("evContent"), miss=document.getElementById("evMissing");
+  try{
+    var r=await fetch("events_results.json?v="+Date.now());
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    EV_DATA=await r.json();
+  }catch(e){
+    miss.style.display="block";
+    miss.innerHTML='<strong style="color:var(--t1)">No event studies yet.</strong> Generate them with <code>node fetch_history.js</code> (one-time) then <code>node events.js</code>. The tab populates from <code>events_results.json</code>. Events are defined in <code>events/catalogue.json</code>.';
+    return;
+  }
+  if(!EV_DATA.events||!EV_DATA.events.length){miss.style.display="block";miss.textContent="events_results.json has no events.";return}
+  miss.style.display="none"; box.style.display="block";
+  document.getElementById("evMeta").textContent="• Window "+EV_DATA.dailyWindow.start+" → "+EV_DATA.dailyWindow.end+" • "+EV_DATA.nEventsScreened+" event(s) × "+EV_DATA.nHorizonsScreened+" horizons screened.";
+  var pills=document.getElementById("evPills"); pills.innerHTML="";
+  EV_DATA.events.forEach(function(ev,i){
+    var b=document.createElement("button");
+    b.className="bt-pill"+(i===EV_SEL?" on":"");
+    b.textContent=ev.name+" ("+ev.nEpisodes+")";
+    b.onclick=function(){EV_SEL=i;initEvents()};
+    pills.appendChild(b);
+  });
+  renderEvent();
+}
+
+function evPct(x,d){if(x==null||!isFinite(x))return"—";d=d==null?2:d;return (x*100).toFixed(d)+"%"}
+function evSigned(x,d){if(x==null||!isFinite(x))return"—";d=d==null?2:d;return (x>=0?"+":"")+(x*100).toFixed(d)+"%"}
+
+function renderEvent(){
+  var ev=EV_DATA.events[EV_SEL]; if(!ev) return;
+
+  // Header: definition + rationale.
+  document.getElementById("evHeader").innerHTML=
+    '<div style="background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px 18px;font-size:12px;line-height:1.7;color:var(--t2)">'+
+    '<div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">'+ev.name+'</div>'+
+    '<div><strong>Definition.</strong> '+ev.definition+'</div>'+
+    '<div style="margin-top:6px"><strong>Rationale.</strong> '+ev.rationale+'</div>'+
+    '<div style="margin-top:6px;color:var(--t3)">Target: '+ev.target+' · '+ev.entryNote+'</div></div>';
+
+  // Discipline flags — the honest caveats up front.
+  var flags=[];
+  if(ev.nEpisodes<10) flags.push({c:"warn",t:"Underpowered: only "+ev.nEpisodes+" independent episodes. Low p-values here are fragile — treat as suggestive, not confirmed."});
+  var on=ev.regimeSplit.on, off=ev.regimeSplit.off;
+  if((on===0||off===0)&&ev.nEpisodes>0) flags.push({c:"warn",t:"Regime-concentrated: every episode occurred in a single regime (risk-on "+on+" / risk-off "+off+"). This is a regime bet, not a regime-independent signal."});
+  var nCells=EV_DATA.nEventsScreened*EV_DATA.nHorizonsScreened;
+  if(nCells>5) flags.push({c:"info",t:nCells+" event×horizon cells screened in total; expect ~"+Math.round(nCells*0.05)+" to look significant at p<0.05 by chance alone. No multiple-testing correction is applied."});
+  document.getElementById("evFlags").innerHTML=flags.length?
+    '<div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">'+flags.map(function(f){
+      var bg=f.c==="warn"?"var(--ab)":"var(--sf)", bd=f.c==="warn"?"#FCD34D":"var(--bd)", ico=f.c==="warn"?"⚠":"ℹ";
+      return '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:var(--r);padding:10px 14px;font-size:11.5px;color:var(--t2);line-height:1.6"><strong>'+ico+'</strong> '+f.t+'</div>';
+    }).join('')+'</div>':'';
+
+  // Stats table.
+  var rows=ev.byHorizon.map(function(b){
+    var edgeCol=b.edgeMedian>0?"#15803D":(b.edgeMedian<0?"#B91C1C":"var(--t2)");
+    var pSig=b.pValue!=null&&isFinite(b.pValue)&&b.pValue<0.05;
+    var pCol=pSig?"#15803D":"var(--t3)";
+    return '<tr>'+
+      '<td class="label" style="font-weight:600">'+b.label+'</td>'+
+      '<td>'+b.n+'</td>'+
+      '<td>'+evSigned(b.median)+'</td>'+
+      '<td class="dim">'+evSigned(b.baseMedian)+'</td>'+
+      '<td style="color:'+edgeCol+';font-weight:600">'+evSigned(b.edgeMedian)+'</td>'+
+      '<td>'+evPct(b.hit,0)+'</td>'+
+      '<td class="dim">'+evPct(b.baseHit,0)+'</td>'+
+      '<td style="color:#15803D">'+evSigned(b.mfeMedian)+'</td>'+
+      '<td style="color:#B91C1C">'+evSigned(b.maeMedian)+'</td>'+
+      '<td style="color:'+pCol+';font-weight:'+(pSig?600:400)+'">'+(b.pValue==null||!isFinite(b.pValue)?"—":b.pValue.toFixed(3))+'</td>'+
+      '</tr>';
+  }).join('');
+  document.getElementById("evTable").innerHTML=
+    '<div class="bt-chart-card"><div class="bt-chart-h">Forward-return distribution by horizon</div>'+
+    '<div style="overflow-x:auto"><table class="ev-tbl">'+
+    '<thead><tr><th>Horizon</th><th>n</th><th>Cond. median</th><th>Baseline</th><th>Edge</th><th>Hit</th><th>Base hit</th><th>Med. MFE</th><th>Med. MAE</th><th>p</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>'+
+    '<div style="padding:8px 14px;font-size:10.5px;color:var(--t3);line-height:1.6">Edge = conditional median &minus; baseline median. MFE/MAE = median best/worst close reached during the holding window (the path, not the endpoint). p = two-sided random-entry Monte Carlo ('+ '2,000 draws).</div></div>';
+
+  drawEvFwdChart(ev);
+  drawEvSignalMap(ev);
+
+  // Episode list.
+  var hs=EV_DATA.horizons, hl=EV_DATA.horizonLabels;
+  var show=[1,2,3,5].filter(function(i){return i<hs.length}); // 2W,1M,2M,6M-ish
+  var epHead='<tr><th>Episode date</th><th>Regime</th>'+show.map(function(i){return '<th>'+hl[i]+'</th>';}).join('')+'</tr>';
+  var epRows=ev.episodes.slice().reverse().map(function(e){
+    return '<tr><td class="label">'+e.date+'</td><td>'+(e.regime==null?'—':(e.regime==="on"?'<span style="color:#15803D">risk-on</span>':'<span style="color:#B91C1C">risk-off</span>'))+'</td>'+
+      show.map(function(i){var v=e.fwd[hs[i]];return '<td style="color:'+(v==null?'var(--t3)':(v>=0?'#15803D':'#B91C1C'))+'">'+(v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%')+'</td>';}).join('')+'</tr>';
+  }).join('');
+  document.getElementById("evEpisodes").innerHTML=
+    '<div class="bt-chart-card"><div class="bt-chart-h">Episodes ('+ev.nEpisodes+' independent · '+ev.nTriggers+' raw triggers collapsed at '+ev.clusterDays+'-day spacing)</div>'+
+    '<div style="overflow-x:auto"><table class="ev-tbl"><thead>'+epHead+'</thead><tbody>'+epRows+'</tbody></table></div></div>';
+}
+
+// Grouped bar chart: conditional median vs baseline median per horizon.
+function drawEvFwdChart(ev){
+  var host=document.getElementById("evFwdChart");
+  var W=720,H=260,mL=44,mR=12,mT=14,mB=28;
+  var svg=btMakeSVG(host,W,H);
+  var bh=ev.byHorizon;
+  var vals=[]; bh.forEach(function(b){vals.push(b.median,b.baseMedian);});
+  var lo=Math.min.apply(null,vals.concat([0])), hi=Math.max.apply(null,vals.concat([0]));
+  var pad=(hi-lo)*0.12||0.01; lo-=pad; hi+=pad;
+  function y(v){return mT+(hi-v)/(hi-lo)*(H-mT-mB);}
+  var n=bh.length, gw=(W-mL-mR)/n;
+  // zero line + gridlines
+  svg.appendChild(svgLine(mL,y(0),W-mR,y(0),"#9E9A92",1));
+  svgEl(svg,"text",{x:mL-6,y:y(0)+3,"text-anchor":"end","font-size":9,fill:"#9E9A92","font-family":"JetBrains Mono"}).textContent="0%";
+  bh.forEach(function(b,i){
+    var cx=mL+gw*i+gw/2, bw=Math.min(20,gw*0.28);
+    // conditional (solid)
+    var y0=y(0), yc=y(b.median);
+    svgEl(svg,"rect",{x:cx-bw-2,y:Math.min(y0,yc),width:bw,height:Math.abs(yc-y0),fill:b.edgeMedian>=0?"#2563EB":"#B91C1C"});
+    // baseline (hollow)
+    var yb=y(b.baseMedian);
+    svgEl(svg,"rect",{x:cx+2,y:Math.min(y0,yb),width:bw,height:Math.abs(yb-y0),fill:"none",stroke:"#475569","stroke-width":1.3});
+    // horizon label
+    svgEl(svg,"text",{x:cx,y:H-mB+16,"text-anchor":"middle","font-size":10,fill:"var(--t2)","font-family":"JetBrains Mono"}).textContent=b.label;
+    // value label on conditional bar
+    svgEl(svg,"text",{x:cx-bw/2-2,y:(b.median>=0?yc-3:yc+10),"text-anchor":"middle","font-size":8.5,fill:"var(--t3)","font-family":"JetBrains Mono"}).textContent=(b.median*100).toFixed(1);
+  });
+}
+function svgLine(x1,y1,x2,y2,stroke,w){var e=document.createElementNS("http://www.w3.org/2000/svg","line");e.setAttribute("x1",x1);e.setAttribute("y1",y1);e.setAttribute("x2",x2);e.setAttribute("y2",y2);e.setAttribute("stroke",stroke);e.setAttribute("stroke-width",w);return e;}
+
+// Signal map: target price (log scale) with a vertical marker at each episode.
+function drawEvSignalMap(ev){
+  document.getElementById("evMapLbl").textContent=ev.target+" close (log scale), red marks = episode trigger dates";
+  var host=document.getElementById("evMap");
+  var W=720,H=300,mL=46,mR=12,mT=12,mB=22;
+  var svg=btMakeSVG(host,W,H);
+  var ps=ev.priceSeries; if(!ps||!ps.length){host.innerHTML='<div style="padding:20px;color:var(--t3)">No price series.</div>';return;}
+  var n=ps.length;
+  var lv=ps.map(function(p){return Math.log(p.ac);});
+  var lo=Math.min.apply(null,lv), hi=Math.max.apply(null,lv);
+  function x(i){return mL+i/(n-1)*(W-mL-mR);}
+  function y(l){return mT+(hi-l)/(hi-lo)*(H-mT-mB);}
+  // y gridlines in price terms
+  for(var g=0;g<=4;g++){var lval=lo+(hi-lo)*g/4;var yy=y(lval);svg.appendChild(svgLine(mL,yy,W-mR,yy,"#EaE8E3",1));svgEl(svg,"text",{x:mL-5,y:yy+3,"text-anchor":"end","font-size":9,fill:"#9E9A92","font-family":"JetBrains Mono"}).textContent=Math.round(Math.exp(lval));}
+  // price path
+  var d="M"; for(var i=0;i<n;i++){d+=(i?"L":"")+x(i).toFixed(1)+" "+y(lv[i]).toFixed(1);}
+  svgEl(svg,"path",{d:d,fill:"none",stroke:"#475569","stroke-width":1.2});
+  // episode markers
+  var idxByDate={}; for(var k=0;k<n;k++) idxByDate[ps[k].d]=k;
+  ev.episodes.forEach(function(e){
+    var i=idxByDate[e.date]; if(i==null)return;
+    var col=e.regime==="off"?"#B91C1C":"#DC2626";
+    svg.appendChild(svgLine(x(i),mT,x(i),H-mB,col,e.regime==="off"?1.4:0.8));
+    svgEl(svg,"circle",{cx:x(i),cy:y(lv[i]),r:3,fill:col});
+  });
+  // date axis ends
+  svgEl(svg,"text",{x:mL,y:H-6,"text-anchor":"start","font-size":9,fill:"var(--t3)","font-family":"JetBrains Mono"}).textContent=ps[0].d;
+  svgEl(svg,"text",{x:W-mR,y:H-6,"text-anchor":"end","font-size":9,fill:"var(--t3)","font-family":"JetBrains Mono"}).textContent=ps[n-1].d;
 }
 
 init();
