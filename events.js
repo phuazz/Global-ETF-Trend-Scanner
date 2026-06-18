@@ -101,6 +101,21 @@ function sma(vals, period) {
   return out;
 }
 
+// Trailing rolling maximum over `win` bars inclusive; out[i] uses vals[i-win+1..i].
+// Entries before the window is full (or with nulls in range) are null.
+function rollingMax(vals, win) {
+  const out = new Array(vals.length).fill(null);
+  for (let i = win - 1; i < vals.length; i++) {
+    let m = -Infinity, ok = true;
+    for (let k = i - win + 1; k <= i; k++) {
+      if (vals[k] == null) { ok = false; break; }
+      if (vals[k] > m) m = vals[k];
+    }
+    out[i] = ok ? m : null;
+  }
+  return out;
+}
+
 // ---------- data loading ----------
 
 function loadTicker(tk) {
@@ -193,6 +208,74 @@ function detectBreadthCross(spy, ev, universe) {
   }
   // Express breadth as a 0-100 series for display, consistent with RSI scale.
   return { dates, ac, triggers, indicator: breadth.map(b => b == null ? null : +(b * 100).toFixed(1)), indicatorName: '% > 200d SMA' };
+}
+
+// New-highs-into-thinning-breadth divergence. The target makes repeated 1-year
+// highs while cross-asset participation (% of the universe above its own 200-day
+// SMA) has rolled over from its own trailing-1-year peak. The trigger fires on
+// the ONSET of the combined condition; forward returns are measured on the
+// target. This is our OWN cross-asset construct — it deliberately substitutes
+// cross-asset breadth for any single-market internal breadth, and imports no
+// external study's numbers. Significance comes from analyseEvent's Monte Carlo.
+function detectNewHighBreadthDivergence(target, ev, universe) {
+  const dates = target.daily.map(b => b.d);
+  const ac = target.daily.map(b => b.ac);
+
+  const nhLookback = ev.newHighLookback || 252;
+  const nhWindow = ev.newHighWindow || 30;
+  const nhMinCount = ev.newHighMinCount || 9;
+  const brPeakLookback = ev.breadthPeakLookback || 252;
+  const brDrop = (ev.breadthDropPP != null ? ev.breadthDropPP : 15) / 100;
+  const minNames = ev.minNames || 30;
+
+  // 1-year-high flag: target close at/above its trailing nhLookback max.
+  const trailMax = rollingMax(ac, nhLookback);
+  const is1yrHigh = ac.map((v, i) => trailMax[i] == null ? null : (v >= trailMax[i] - 1e-9));
+
+  // Count of 1-year-high days within the trailing nhWindow sessions.
+  const nhCount = new Array(ac.length).fill(null);
+  for (let i = nhWindow - 1; i < ac.length; i++) {
+    let c = 0, ok = true;
+    for (let k = i - nhWindow + 1; k <= i; k++) {
+      if (is1yrHigh[k] == null) { ok = false; break; }
+      if (is1yrHigh[k]) c++;
+    }
+    if (ok) nhCount[i] = c;
+  }
+
+  // Cross-asset breadth on the TARGET's date axis: % of universe above own 200d.
+  const aboveByTk = {};
+  for (const tk of universe) {
+    let h; try { h = loadTicker(tk); } catch (e) { continue; }
+    const a = h.daily.map(b => b.ac);
+    const s2 = sma(a, 200);
+    const m = {};
+    for (let i = 0; i < h.daily.length; i++) if (s2[i] != null) m[h.daily[i].d] = a[i] > s2[i];
+    aboveByTk[tk] = m;
+  }
+  const breadth = new Array(dates.length).fill(null);
+  for (let i = 0; i < dates.length; i++) {
+    const d = dates[i];
+    let above = 0, total = 0;
+    for (const tk of universe) { const m = aboveByTk[tk]; if (m && d in m) { total++; if (m[d]) above++; } }
+    if (total >= minNames) breadth[i] = above / total;
+  }
+
+  // Breadth divergence: breadth sits brDrop below its own trailing-1-year peak.
+  const brPeak = rollingMax(breadth, brPeakLookback);
+  const diverging = breadth.map((b, i) => (b == null || brPeak[i] == null) ? null : (b <= brPeak[i] - brDrop));
+
+  // Combined condition, fired on onset (true today, not true yesterday).
+  const cond = dates.map((_, i) =>
+    nhCount[i] != null && nhCount[i] >= nhMinCount && diverging[i] === true);
+  const triggers = [];
+  for (let i = 1; i < dates.length; i++) if (cond[i] && !cond[i - 1]) triggers.push(i);
+
+  return {
+    dates, ac, triggers,
+    indicator: breadth.map(b => b == null ? null : +(b * 100).toFixed(1)),
+    indicatorName: '% > 200d SMA (cross-asset)'
+  };
 }
 
 // Collapse triggers whose forward windows overlap into one episode. We keep the
@@ -345,6 +428,8 @@ function main() {
       series = detectRsiOverboughtToMid(loadTicker(ev.target), ev);
     } else if (ev.kind === 'breadth_cross') {
       series = detectBreadthCross(spy, ev, universe);
+    } else if (ev.kind === 'newhigh_breadth_divergence') {
+      series = detectNewHighBreadthDivergence(loadTicker(ev.target), ev, universe);
     } else {
       console.warn(`SKIP ${ev.id}: unknown kind ${ev.kind}`); continue;
     }

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdated": "2026-06-18",
+  "lastUpdated": "2026-06-19",
   "_doc": "Pre-registered event library. Every event MUST carry a written `rationale` (the economic mechanism) before it is admitted — events.js refuses to run an event without one. This is the antidote to fishing: the hypothesis is recorded before the result is seen. `universe` is the full 56-ETF cross-asset set used by breadth events (equities, fixed income, commodities, real estate, currencies, alternatives, thematics).",
   "universe": [
     "SPY", "QQQ", "IWM", "DIA", "VTV", "VUG", "MDY",
@@ -35,6 +35,21 @@
       "clusterDays": 21,
       "rationale": "Cross-sectional participation across the whole 56-ETF cross-asset book, not an index level. When fewer than half of all assets — equities, bonds, commodities, real estate, currencies, alternatives — are above their own 200-day SMA, trends are failing broadly and there are few places to hide, even if cap-weighted SPY has not broken. This is a breadth construct a single-index desk cannot build, and it maps onto the same 200d-SMA regime gate the backtest already trusts. Forward returns are measured on SPY.",
       "definition": "Trigger on the session the share of the 56-ETF cross-asset universe trading above its own 200-day SMA crosses below 50% (minimum 30 eligible names)."
+    },
+    {
+      "id": "ewj-newhigh-xasset-breadth-divergence",
+      "name": "EWJ at sustained 1-year highs into thinning cross-asset breadth",
+      "kind": "newhigh_breadth_divergence",
+      "target": "EWJ",
+      "newHighLookback": 252,
+      "newHighWindow": 30,
+      "newHighMinCount": 9,
+      "breadthPeakLookback": 252,
+      "breadthDropPP": 15,
+      "minNames": 30,
+      "clusterDays": 21,
+      "rationale": "A single-country equity index pressing repeated one-year highs while cross-asset participation has rolled over is a late-cycle narrowing: the advance is carried by fewer independent engines across the whole 56-ETF opportunity set, so an adverse shock has fewer offsets and trend-following capital is concentrated. We measure the condition on EWJ, our liquid Japan proxy (MSCI Japan; roughly 0.9 correlated to the Nikkei 225, adequate for the price-new-high gate). This deliberately substitutes our cross-asset breadth for the single-market internal breadth used by the external study that prompted it; it therefore tests participation-narrowing across asset classes, not Japanese index internals, and imports none of that study's printed statistics. Significance is judged solely by our random-entry Monte Carlo. The sample is necessarily thin on a ten-year daily window, so treat a single favourable horizon as weak evidence. If a position results, it is expressed via DXJ (JPY-hedged); forward returns here are measured on EWJ.",
+      "definition": "Trigger on the onset (condition true today, not true yesterday) of: EWJ closed at a 1-year high on at least 9 of the trailing 30 sessions AND cross-asset breadth (share of the 56-ETF universe above its own 200-day SMA, minimum 30 eligible names) sits at least 15 percentage points below its own trailing-1-year peak. Forward returns measured on EWJ from the trigger close."
     }
   ]
 }
