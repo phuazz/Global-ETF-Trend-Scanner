@@ -1,6 +1,6 @@
 {
- "generatedAt": "2026-06-22T11:48:09.010Z",
- "asOf": "2026-06-18",
+ "generatedAt": "2026-06-23T09:33:53.040Z",
+ "asOf": "2026-06-22",
  "lookbackSessions": 10,
  "events": [
   {
@@ -8,8 +8,8 @@
    "name": "SPY RSI: overbought to sub-50 in 3 days",
    "target": "SPY",
    "status": "ACTIVE",
-   "detail": "Triggered 9 session(s) ago (2026-06-05). Current RSI 55.1.",
-   "current": 55.1,
+   "detail": "Triggered 10 session(s) ago (2026-06-05). Current RSI 53.6.",
+   "current": 53.6,
    "currentLabel": "RSI",
    "lastTrigger": "2026-06-05"
   },
