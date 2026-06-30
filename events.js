@@ -278,6 +278,25 @@ function detectNewHighBreadthDivergence(target, ev, universe) {
   };
 }
 
+// Oversold washout inside a downtrend: the target's RSI crosses below
+// `oversoldLevel` while it trades below its `smaPeriod`-day SMA. A mean-reversion
+// ("buy the washout") trigger — deliberately COUNTER-trend, outside this
+// scanner's trend-following spine. Forward returns measured on the target.
+function detectOversoldReversionInDowntrend(target, ev) {
+  const ac = target.daily.map(b => b.ac);
+  const dates = target.daily.map(b => b.d);
+  const rsi = rsiWilder(ac, ev.rsiPeriod || 14);
+  const s = sma(ac, ev.smaPeriod || 200);
+  const lvl = ev.oversoldLevel != null ? ev.oversoldLevel : 30;
+  const triggers = [];
+  for (let i = 1; i < ac.length; i++) {
+    if (rsi[i] == null || rsi[i - 1] == null || s[i] == null) continue;
+    // RSI crosses below the oversold level, with the close already below the SMA.
+    if (rsi[i] < lvl && rsi[i - 1] >= lvl && ac[i] < s[i]) triggers.push(i);
+  }
+  return { dates, ac, triggers, indicator: rsi, indicatorName: `RSI(${ev.rsiPeriod || 14})` };
+}
+
 // Collapse triggers whose forward windows overlap into one episode. We keep the
 // FIRST trigger of each cluster; any later trigger within `clusterDays` bars of
 // the cluster's anchor is absorbed.
@@ -430,6 +449,8 @@ function main() {
       series = detectBreadthCross(spy, ev, universe);
     } else if (ev.kind === 'newhigh_breadth_divergence') {
       series = detectNewHighBreadthDivergence(loadTicker(ev.target), ev, universe);
+    } else if (ev.kind === 'oversold_reversion_in_downtrend') {
+      series = detectOversoldReversionInDowntrend(loadTicker(ev.target), ev);
     } else {
       console.warn(`SKIP ${ev.id}: unknown kind ${ev.kind}`); continue;
     }

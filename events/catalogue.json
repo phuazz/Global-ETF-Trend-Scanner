@@ -50,6 +50,30 @@
       "clusterDays": 21,
       "rationale": "A single-country equity index pressing repeated one-year highs while cross-asset participation has rolled over is a late-cycle narrowing: the advance is carried by fewer independent engines across the whole 56-ETF opportunity set, so an adverse shock has fewer offsets and trend-following capital is concentrated. We measure the condition on EWJ, our liquid Japan proxy (MSCI Japan; roughly 0.9 correlated to the Nikkei 225, adequate for the price-new-high gate). This deliberately substitutes our cross-asset breadth for the single-market internal breadth used by the external study that prompted it; it therefore tests participation-narrowing across asset classes, not Japanese index internals, and imports none of that study's printed statistics. Significance is judged solely by our random-entry Monte Carlo. The sample is necessarily thin on a ten-year daily window, so treat a single favourable horizon as weak evidence. If a position results, it is expressed via DXJ (JPY-hedged); forward returns here are measured on EWJ.",
       "definition": "Trigger on the onset (condition true today, not true yesterday) of: EWJ closed at a 1-year high on at least 9 of the trailing 30 sessions AND cross-asset breadth (share of the 56-ETF universe above its own 200-day SMA, minimum 30 eligible names) sits at least 15 percentage points below its own trailing-1-year peak. Forward returns measured on EWJ from the trigger close."
+    },
+    {
+      "id": "gld-oversold-reversion-downtrend",
+      "name": "GLD oversold washout below its 200-day SMA",
+      "kind": "oversold_reversion_in_downtrend",
+      "target": "GLD",
+      "rsiPeriod": 14,
+      "oversoldLevel": 30,
+      "smaPeriod": 200,
+      "clusterDays": 21,
+      "rationale": "A mean-reversion proxy, NOT a replication of the SentimenTrader GLD study (which rests on a proprietary Optix sentiment index and a 21-year seasonal window we cannot reproduce on our ten-year daily history). Mechanism: a liquid, widely-held commodity ETF that becomes acutely oversold (RSI below 30) while already trading below its 200-day SMA has usually overshot to the downside on momentum or forced selling, so a partial snap-back toward the mean is common over the following weeks. This is deliberately a COUNTER-TREND test, outside this scanner's trend-following spine and its 200-day regime gate; it is logged and reported as such, not as a trend signal. Forward returns on GLD; significance from our random-entry Monte Carlo. The sample is thin on a ten-year daily window, so treat a single favourable horizon as weak evidence.",
+      "definition": "Trigger on the session GLD's RSI(14) crosses below 30 while GLD closes below its 200-day SMA. Forward returns measured on GLD from the trigger close."
+    },
+    {
+      "id": "slv-oversold-reversion-downtrend",
+      "name": "SLV oversold washout below its 200-day SMA",
+      "kind": "oversold_reversion_in_downtrend",
+      "target": "SLV",
+      "rsiPeriod": 14,
+      "oversoldLevel": 30,
+      "smaPeriod": 200,
+      "clusterDays": 21,
+      "rationale": "The same oversold-in-downtrend mean-reversion construct as the GLD card, applied to silver to test whether the washout-bounce holds across precious metals. Silver (SLV) is higher-beta and more volatile than gold, so washouts run deeper and snap-backs are larger but noisier; this is the natural robustness check on the gold result. Counter-trend by design, outside the trend-following spine. Forward returns on SLV; significance from our random-entry Monte Carlo; thin sample caveat applies.",
+      "definition": "Trigger on the session SLV's RSI(14) crosses below 30 while SLV closes below its 200-day SMA. Forward returns measured on SLV from the trigger close."
     }
   ]
 }
