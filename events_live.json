@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-07-03T08:58:21.326Z",
+ "generatedAt": "2026-07-04T08:32:54.532Z",
  "asOf": "2026-07-02",
  "lookbackSessions": 10,
  "events": [
@@ -18,8 +18,8 @@
    "name": "Cross-asset breadth crosses below 50% above 200d SMA",
    "target": "SPY",
    "status": "QUIET",
-   "detail": "76.8% above 200d SMA. Last cross below 50%: none in 2y.",
-   "current": 76.8,
+   "detail": "75% above 200d SMA. Last cross below 50%: none in 2y.",
+   "current": 75,
    "currentLabel": "% > 200d SMA",
    "lastTrigger": null
   }
