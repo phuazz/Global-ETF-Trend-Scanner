@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-07T12:23:47.713Z",
+ "generatedAt": "2026-11-08T12:42:23.411Z",
  "asOf": "2026-11-06",
  "lookbackSessions": 10,
  "events": [
@@ -18,8 +18,8 @@
    "name": "Cross-asset breadth crosses below 50% above 200d SMA",
    "target": "SPY",
    "status": "ACTIVE",
-   "detail": "Crossed below 50% 1 session(s) ago (2026-11-05). Now 32.1% above 200d SMA.",
-   "current": 32.1,
+   "detail": "Crossed below 50% 1 session(s) ago (2026-11-05). Now 33.9% above 200d SMA.",
+   "current": 33.9,
    "currentLabel": "% > 200d SMA",
    "lastTrigger": "2026-11-05"
   }
