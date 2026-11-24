@@ -1,6 +1,6 @@
 {
- "generatedAt": "2026-11-23T17:17:56.207Z",
- "asOf": "2026-11-23",
+ "generatedAt": "2026-11-24T16:56:17.967Z",
+ "asOf": "2026-11-24",
  "lookbackSessions": 10,
  "events": [
   {
@@ -8,8 +8,8 @@
    "name": "SPY RSI: overbought to sub-50 in 3 days",
    "target": "SPY",
    "status": "QUIET",
-   "detail": "RSI 42.1. Last trigger 2026-06-05.",
-   "current": 42.1,
+   "detail": "RSI 39.5. Last trigger 2026-06-05.",
+   "current": 39.5,
    "currentLabel": "RSI",
    "lastTrigger": "2026-06-05"
   },
@@ -18,7 +18,7 @@
    "name": "Cross-asset breadth crosses below 50% above 200d SMA",
    "target": "SPY",
    "status": "ACTIVE",
-   "detail": "Crossed below 50% 9 session(s) ago (2026-11-10). Now 14.3% above 200d SMA.",
+   "detail": "Crossed below 50% 10 session(s) ago (2026-11-10). Now 14.3% above 200d SMA.",
    "current": 14.3,
    "currentLabel": "% > 200d SMA",
    "lastTrigger": "2026-11-10"
